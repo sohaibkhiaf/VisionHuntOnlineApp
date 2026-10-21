@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme Semantic Colors (Dark) -->
+    <color name="screen_background">#0F172A</color>
+    <color name="card_background">#1E293B</color>
+    <color name="bottom_nav_background">#1E293B</color>
+    <color name="text_primary">#F8FAFC</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="text_muted">#CBD5E1</color>
+    <color name="card_stroke">#334155</color>
+
+    <!-- Task Item Specific Colors (Dark) -->
+    <color name="task_card_background">#FFFFFF</color>
+    <color name="task_title_ar_color">#0F172A</color>
+    <color name="task_text_color">#64748B</color>
+</resources>
