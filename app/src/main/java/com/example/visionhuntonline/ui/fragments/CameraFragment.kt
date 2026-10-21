@@ -108,6 +108,16 @@ class CameraFragment : Fragment() {
                         }
                     }
                 }
+                launch {
+                    viewModel.showOfflineDialogEvent.collect { show ->
+                        if (show) {
+                            activity?.let { act ->
+                                com.example.visionhuntonline.util.NetworkDialogHelper(act).showNoInternetDialog()
+                            }
+                            viewModel.resetOfflineDialogEvent()
+                        }
+                    }
+                }
             }
         }
     }

@@ -10,10 +10,12 @@ import com.example.visionhuntonline.databinding.ActivityMainBinding
 import com.example.visionhuntonline.ui.fragments.CameraFragment
 import com.example.visionhuntonline.ui.fragments.TasksFragment
 import com.example.visionhuntonline.ui.screens.AuthActivity
+import com.example.visionhuntonline.util.NetworkDialogHelper
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private val networkHelper = NetworkDialogHelper(this)
 
     private val tasksFragment by lazy {
         TasksFragment().apply {
@@ -30,6 +32,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         super.onCreate(savedInstanceState)
+
+        networkHelper.monitorNetwork(this)
 
         val sessionManager = UserSessionManager(this)
         if (!sessionManager.isLoggedIn()) {

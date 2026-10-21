@@ -11,17 +11,21 @@ import com.example.visionhuntonline.R
 import com.example.visionhuntonline.data.UserSessionManager
 import com.example.visionhuntonline.databinding.ActivityAuthBinding
 import com.example.visionhuntonline.network.ApiClient
+import com.example.visionhuntonline.util.NetworkDialogHelper
 import kotlinx.coroutines.launch
 
 class AuthActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAuthBinding
     private lateinit var sessionManager: UserSessionManager
+    private val networkHelper = NetworkDialogHelper(this)
     private var isRegisterMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
+
+        networkHelper.monitorNetwork(this)
 
         binding = ActivityAuthBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -58,6 +62,8 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun handleFormSubmit() {
+        if (!networkHelper.checkAndShowDialog()) return
+
         val username = binding.etUsername.text?.toString()?.trim() ?: ""
         val password = binding.etPassword.text?.toString()?.trim() ?: ""
         val phone = binding.etPhone.text?.toString()?.trim() ?: ""
@@ -100,7 +106,6 @@ class AuthActivity : AppCompatActivity() {
                         ).show()
                         navigateToMain()
                     } else {
-                        // If register succeeded without token, switch to login mode automatically
                         Toast.makeText(
                             this@AuthActivity,
                             "تم إنشاء الحساب بنجاح! جاري تسجيل الدخول...",

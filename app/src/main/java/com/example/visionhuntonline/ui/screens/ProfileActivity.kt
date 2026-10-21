@@ -9,16 +9,20 @@ import androidx.lifecycle.lifecycleScope
 import com.example.visionhuntonline.data.UserSessionManager
 import com.example.visionhuntonline.databinding.ActivityProfileBinding
 import com.example.visionhuntonline.network.ApiClient
+import com.example.visionhuntonline.util.NetworkDialogHelper
 import kotlinx.coroutines.launch
 
 class ProfileActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProfileBinding
     private lateinit var sessionManager: UserSessionManager
+    private val networkHelper = NetworkDialogHelper(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
+
+        networkHelper.monitorNetwork(this)
 
         binding = ActivityProfileBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -49,6 +53,8 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun handleProfileUpdate() {
+        if (!networkHelper.checkAndShowDialog()) return
+
         val token = sessionManager.getToken()
         if (token.isNullOrEmpty()) {
             Toast.makeText(this, "جلسة المستخدم انتهت، يرجى إعادة تسجيل الدخول", Toast.LENGTH_SHORT).show()
@@ -91,6 +97,8 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun handleLogout() {
+        if (!networkHelper.checkAndShowDialog()) return
+
         val token = sessionManager.getToken()
         setLoading(true)
 

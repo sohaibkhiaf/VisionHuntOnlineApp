@@ -15,6 +15,7 @@ import com.example.visionhuntonline.model.Detection
 import com.example.visionhuntonline.model.GameProgress
 import com.example.visionhuntonline.model.GameState
 import com.example.visionhuntonline.network.ApiClient
+import com.example.visionhuntonline.util.NetworkUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +47,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _isModelLoaded = MutableStateFlow(true)
     val isModelLoaded: StateFlow<Boolean> = _isModelLoaded.asStateFlow()
 
+    private val _showOfflineDialogEvent = MutableStateFlow(false)
+    val showOfflineDialogEvent: StateFlow<Boolean> = _showOfflineDialogEvent.asStateFlow()
+
+    fun resetOfflineDialogEvent() {
+        _showOfflineDialogEvent.value = false
+    }
+
     fun onDetectionsReceived(results: List<Detection>, inferenceTimeMs: Long, frameBitmap: Bitmap? = null, context: Context? = null) {
         _rawDetections.value = results
         _inferenceTime.value = inferenceTimeMs
@@ -61,6 +69,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         _gameDetections.value = matchingTasks.map { it.second }
+
+        val uncompletedNewTasks = matchingTasks.filter { it.first.id !in currentCompleted }
+
+        // Block registering task completion if internet connection is missing
+        if (uncompletedNewTasks.isNotEmpty()) {
+            val isConnected = context?.let { NetworkUtils.isNetworkConnected(it) } ?: true
+            if (!isConnected) {
+                _showOfflineDialogEvent.value = true
+                return
+            }
+        }
 
         var progressChanged = false
         val appContext = context?.applicationContext
