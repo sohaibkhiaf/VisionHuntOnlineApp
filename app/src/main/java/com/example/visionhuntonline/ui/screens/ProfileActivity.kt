@@ -100,16 +100,25 @@ class ProfileActivity : AppCompatActivity() {
         if (!networkHelper.checkAndShowDialog()) return
 
         val token = sessionManager.getToken()
+        if (token.isNullOrEmpty()) {
+            sessionManager.clearSession()
+            navigateToAuth()
+            return
+        }
+
         setLoading(true)
 
         lifecycleScope.launch {
-            if (!token.isNullOrEmpty()) {
-                ApiClient.logout(token)
-            }
-            sessionManager.clearSession()
+            val result = ApiClient.logout(token)
             setLoading(false)
-            Toast.makeText(this@ProfileActivity, "تم تسجيل الخروج بنجاح", Toast.LENGTH_SHORT).show()
-            navigateToAuth()
+
+            if (result.isSuccess) {
+                sessionManager.clearSession()
+                Toast.makeText(this@ProfileActivity, result.message ?: "تم تسجيل الخروج بنجاح", Toast.LENGTH_SHORT).show()
+                navigateToAuth()
+            } else {
+                Toast.makeText(this@ProfileActivity, result.message ?: "فشل الاتصال بالسيرفر لتسجيل الخروج", Toast.LENGTH_LONG).show()
+            }
         }
     }
 

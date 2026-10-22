@@ -35,8 +35,14 @@ class GameRepository(context: Context) {
         return true
     }
 
+    fun updateServerScore(score: Int) {
+        prefs.edit().putInt(KEY_SERVER_SCORE, score).apply()
+    }
+
+    fun getServerScore(): Int = prefs.getInt(KEY_SERVER_SCORE, 0)
+
     fun resetGame() {
-        prefs.edit().remove(KEY_COMPLETED_TASKS).apply()
+        prefs.edit().remove(KEY_COMPLETED_TASKS).putInt(KEY_SERVER_SCORE, 0).apply()
         _gameState.value = GameState(version = 1, completedTaskIds = emptySet())
     }
 
@@ -44,9 +50,7 @@ class GameRepository(context: Context) {
         val completedSet = state.completedTaskIds
         val tasks = CocoTasks.GAME_TASKS
 
-        val score = tasks.sumOf { task ->
-            if (task.id in completedSet) task.points else 0
-        }
+        val score = getServerScore()
         val completedCount = tasks.count { it.id in completedSet }
         val totalTasks = tasks.size
         val isCompleted = totalTasks > 0 && completedCount == totalTasks
@@ -62,5 +66,6 @@ class GameRepository(context: Context) {
     companion object {
         private const val PREFS_NAME = "vision_hunt_prefs"
         private const val KEY_COMPLETED_TASKS = "@vision_hunt/completed_tasks"
+        private const val KEY_SERVER_SCORE = "@vision_hunt/server_score"
     }
 }

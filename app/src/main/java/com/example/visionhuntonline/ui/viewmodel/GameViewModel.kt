@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Collections
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -50,11 +51,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _showOfflineDialogEvent = MutableStateFlow(false)
     val showOfflineDialogEvent: StateFlow<Boolean> = _showOfflineDialogEvent.asStateFlow()
 
+    private val syncingTaskIds = Collections.synchronizedSet(mutableSetOf<String>())
+
     fun resetOfflineDialogEvent() {
         _showOfflineDialogEvent.value = false
     }
 
-    fun onDetectionsReceived(results: List<Detection>, inferenceTimeMs: Long, frameBitmap: Bitmap? = null, context: Context? = null) {
+    fun onDetectionsReceived(
+        results: List<Detection>,
+        inferenceTimeMs: Long,
+        frameBitmap: Bitmap? = null,
+        context: Context? = null
+    ) {
         _rawDetections.value = results
         _inferenceTime.value = inferenceTimeMs
         _inferenceError.value = null
@@ -70,84 +78,93 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         _gameDetections.value = matchingTasks.map { it.second }
 
-        val uncompletedNewTasks = matchingTasks.filter { it.first.id !in currentCompleted }
+        val uncompletedNewTasks = matchingTasks.filter { (task, _) ->
+            task.id !in currentCompleted && task.id !in syncingTaskIds
+        }
+
+        if (uncompletedNewTasks.isEmpty()) return
+
+        val appContext = context?.applicationContext ?: getApplication<Application>().applicationContext
 
         // Block registering task completion if internet connection is missing
-        if (uncompletedNewTasks.isNotEmpty()) {
-            val isConnected = context?.let { NetworkUtils.isNetworkConnected(it) } ?: true
-            if (!isConnected) {
-                _showOfflineDialogEvent.value = true
-                return
-            }
-        }
-
-        var progressChanged = false
-        val appContext = context?.applicationContext
-        val dbHelper = appContext?.let { CapturedItemDbHelper(it) }
-
-        for ((task, detection) in matchingTasks) {
-            if (task.id !in currentCompleted) {
-                if (repository.completeTask(task.id)) {
-                    progressChanged = true
-                    // Capture image and save to database
-                    if (appContext != null && frameBitmap != null) {
-                        try {
-                            val imgFile = File(appContext.filesDir, "capture_${task.id}_${System.currentTimeMillis()}.jpg")
-                            FileOutputStream(imgFile).use { out ->
-                                frameBitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-                            }
-                            dbHelper?.insertItem(
-                                CapturedItem(
-                                    taskId = task.id,
-                                    taskNameAr = task.displayNameAr,
-                                    taskNameEn = task.displayNameEn,
-                                    imagePath = imgFile.absolutePath,
-                                    timestamp = System.currentTimeMillis(),
-                                    score = detection.score
-                                )
-                            )
-                        } catch (e: Exception) {
-                            Log.e("GameViewModel", "Error saving captured image", e)
-                        }
-                    }
-                }
-            }
-        }
-
-        if (progressChanged) {
-            _gameProgress.value = repository.getProgress()
-            syncGameState(appContext)
-        } else if (_gameProgress.value.score != repository.getProgress().score) {
-            _gameProgress.value = repository.getProgress()
-        }
-    }
-
-    private fun syncGameState(context: Context?) {
-        val ctx = context ?: getApplication<Application>().applicationContext
-        val sessionManager = UserSessionManager(ctx)
-        val token = sessionManager.getToken()
-
-        if (token.isNullOrEmpty()) {
-            Log.d("GameViewModel", "Sync skipped: User not logged in or token missing")
+        if (!NetworkUtils.isNetworkConnected(appContext)) {
+            _showOfflineDialogEvent.value = true
             return
         }
 
+        val sessionManager = UserSessionManager(appContext)
+        val token = sessionManager.getToken()
+        if (token.isNullOrEmpty()) {
+            _inferenceError.value = "غير مصرح: يرجى تسجيل الدخول أولاً"
+            return
+        }
+
+        val (taskToSync, detectionToSync) = uncompletedNewTasks.first()
+        syncingTaskIds.add(taskToSync.id)
+
         viewModelScope.launch {
             try {
-                val currentScore = repository.getProgress().score
+                val dbHelper = CapturedItemDbHelper(appContext)
+                val existingItems = dbHelper.getAllItems()
 
-                val syncResult = ApiClient.sync(
-                    token = token,
-                    score = currentScore
+                val tempImagePath = if (frameBitmap != null) {
+                    try {
+                        val imgFile = File(appContext.filesDir, "capture_${taskToSync.id}_${System.currentTimeMillis()}.jpg")
+                        FileOutputStream(imgFile).use { out ->
+                            frameBitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                        }
+                        imgFile.absolutePath
+                    } catch (e: Exception) {
+                        Log.e("GameViewModel", "Error saving temp image", e)
+                        ""
+                    }
+                } else ""
+
+                val newItem = CapturedItem(
+                    taskId = taskToSync.id,
+                    taskNameAr = taskToSync.displayNameAr,
+                    taskNameEn = taskToSync.displayNameEn,
+                    imagePath = tempImagePath,
+                    timestamp = System.currentTimeMillis(),
+                    score = detectionToSync.score
                 )
 
-                if (syncResult.isSuccess) {
-                    Log.d("GameViewModel", "Score synced successfully with server: ${syncResult.message}")
+                val prospectiveItems = existingItems + newItem
+
+                // Send sync request to server BEFORE completing task locally
+                val syncResult = ApiClient.sync(
+                    token = token,
+                    completedTasks = prospectiveItems
+                )
+
+                if (syncResult.isSuccess && syncResult.data != null) {
+                    // SERVER SUCCESS! Complete task locally and save DB item
+                    repository.completeTask(taskToSync.id)
+                    dbHelper.insertItem(newItem)
+
+                    val newServerScore = syncResult.data.score
+                    repository.updateServerScore(newServerScore)
+                    _gameProgress.value = repository.getProgress()
+
+                    Log.d("GameViewModel", "Successfully synced task ${taskToSync.id} with server. Server score: $newServerScore")
                 } else {
-                    Log.e("GameViewModel", "Score sync failed: ${syncResult.message}")
+                    // SERVER FAILED! Delete temp image, DO NOT mark completed locally
+                    if (tempImagePath.isNotEmpty()) {
+                        try {
+                            File(tempImagePath).delete()
+                        } catch (e: Exception) {
+                            Log.e("GameViewModel", "Error deleting temp file on failure", e)
+                        }
+                    }
+                    val errorMsg = syncResult.message ?: "فشلت المزامنة مع السيرفر"
+                    Log.e("GameViewModel", "Server sync failed for task ${taskToSync.id}: $errorMsg")
+                    _inferenceError.value = "فشل تسجيل الكشف بالسيرفر: $errorMsg"
                 }
             } catch (e: Exception) {
-                Log.e("GameViewModel", "Error syncing score with server", e)
+                Log.e("GameViewModel", "Exception during detection sync with server", e)
+                _inferenceError.value = e.localizedMessage ?: "خطأ في الاتصال بالسيرفر"
+            } finally {
+                syncingTaskIds.remove(taskToSync.id)
             }
         }
     }
@@ -158,36 +175,60 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun resetGame(context: Context? = null) {
-        repository.resetGame()
-        _gameProgress.value = repository.getProgress()
-        _rawDetections.value = emptyList()
-        _gameDetections.value = emptyList()
+        val ctx = context ?: getApplication<Application>().applicationContext
 
-        context?.let { ctx ->
-            try {
-                val dbHelper = CapturedItemDbHelper(ctx)
-                val items = dbHelper.getAllItems()
-                for (item in items) {
-                    try {
-                        val file = File(item.imagePath)
-                        if (file.exists()) file.delete()
-                    } catch (e: Exception) {
-                        Log.e("GameViewModel", "Error deleting image file", e)
-                    }
-                }
-                dbHelper.deleteAllItems()
-            } catch (e: Exception) {
-                Log.e("GameViewModel", "Error clearing captured database", e)
-            }
+        if (!NetworkUtils.isNetworkConnected(ctx)) {
+            _showOfflineDialogEvent.value = true
+            return
         }
 
-        syncGameState(context)
+        val sessionManager = UserSessionManager(ctx)
+        val token = sessionManager.getToken()
+
+        if (token.isNullOrEmpty()) {
+            _inferenceError.value = "غير مصرح: يرجى تسجيل الدخول أولاً"
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val result = ApiClient.restart(token)
+                if (result.isSuccess && result.data != null) {
+                    repository.resetGame()
+                    repository.updateServerScore(result.data)
+                    _rawDetections.value = emptyList()
+                    _gameDetections.value = emptyList()
+
+                    try {
+                        val dbHelper = CapturedItemDbHelper(ctx)
+                        val items = dbHelper.getAllItems()
+                        for (item in items) {
+                            try {
+                                val file = File(item.imagePath)
+                                if (file.exists()) file.delete()
+                            } catch (e: Exception) {
+                                Log.e("GameViewModel", "Error deleting image file", e)
+                            }
+                        }
+                        dbHelper.deleteAllItems()
+                    } catch (e: Exception) {
+                        Log.e("GameViewModel", "Error clearing captured database", e)
+                    }
+
+                    _gameProgress.value = repository.getProgress()
+                    Log.d("GameViewModel", "Game restarted on server. Server score reset to: ${result.data}")
+                } else {
+                    Log.e("GameViewModel", "Server restart failed: ${result.message}")
+                    _inferenceError.value = result.message ?: "فشلت إعادة البداية من السيرفر"
+                }
+            } catch (e: Exception) {
+                Log.e("GameViewModel", "Error calling restart endpoint", e)
+                _inferenceError.value = e.localizedMessage ?: "فشل الاتصال بالسيرفر لإعادة البداية"
+            }
+        }
     }
 
     fun completeTask(taskId: String) {
-        if (repository.completeTask(taskId)) {
-            _gameProgress.value = repository.getProgress()
-            syncGameState(null)
-        }
+        // Unused directly; tasks are completed via server sync in onDetectionsReceived
     }
 }

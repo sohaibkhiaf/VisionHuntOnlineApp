@@ -20,6 +20,12 @@ data class AuthData(
     val phone: String? = null
 )
 
+data class SyncData(
+    val score: Int,
+    val completedTasksCount: Int,
+    val message: String
+)
+
 object ApiClient {
     var baseUrl: String = "http://192.168.1.6/visionhunt-web/public/api/v1/"
 
@@ -116,30 +122,49 @@ object ApiClient {
             try {
                 val (responseCode, responseText) = executePost("logout.php", "{}", token)
                 val json = parseJsonResponse(responseText, responseCode)
-                val msg = json.optString("message", "تم تسجيل الخروج")
-                ApiResult(true, msg, msg)
+                if (responseCode in 200..299 || json.optBoolean("success") || json.optString("status") == "success") {
+                    val msg = json.optString("message", "تم تسجيل الخروج بنجاح")
+                    ApiResult(true, msg, msg)
+                } else {
+                    val errorMsg = json.optString("message")
+                        .ifEmpty { json.optString("error", "فشل تسجيل الخروج من السيرفر ($responseCode)") }
+                    ApiResult(false, null, errorMsg)
+                }
             } catch (e: Exception) {
-                ApiResult(true, "تم تسجيل الخروج محلياً", "تم تسجيل الخروج")
+                ApiResult(false, null, e.localizedMessage ?: "فشل الاتصال بالسيرفر لتسجيل الخروج")
             }
         }
     }
 
     suspend fun sync(
         token: String,
-        score: Int
-    ): ApiResult<String> {
+        completedTasks: List<com.example.visionhuntonline.model.CapturedItem>
+    ): ApiResult<SyncData> {
         return withContext(Dispatchers.IO) {
             try {
+                val tasksArray = org.json.JSONArray()
+                for (item in completedTasks) {
+                    val taskObj = JSONObject().apply {
+                        put("object_name_en", item.taskNameEn)
+                        val confidenceVal = if (item.score <= 1.0f) item.score * 100.0f else item.score
+                        put("confidence", confidenceVal)
+                    }
+                    tasksArray.put(taskObj)
+                }
+
                 val jsonBody = JSONObject().apply {
-                    put("score", score)
+                    put("completed_tasks", tasksArray)
                 }
 
                 val (responseCode, responseText) = executePost("sync.php", jsonBody.toString(), token)
                 val json = parseJsonResponse(responseText, responseCode)
 
                 if (responseCode in 200..299 || json.optBoolean("success") || json.optString("status") == "success") {
-                    val msg = json.optString("message", "تمت مزامنة نقاط اللاعب بنجاح.")
-                    ApiResult(true, msg, msg)
+                    val dataObj = json.optJSONObject("data")
+                    val score = dataObj?.optInt("score") ?: 0
+                    val count = dataObj?.optInt("completed_tasks_count") ?: completedTasks.size
+                    val msg = json.optString("message", "تمت مزامنة المهام وتحديث النقاط بنجاح.")
+                    ApiResult(true, SyncData(score = score, completedTasksCount = count, message = msg), msg)
                 } else {
                     val errorMsg = json.optString("message")
                         .ifEmpty { json.optString("error", "فشلت المزامنة ($responseCode)") }
@@ -147,6 +172,28 @@ object ApiClient {
                 }
             } catch (e: Exception) {
                 ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء المزامنة")
+            }
+        }
+    }
+
+    suspend fun restart(token: String): ApiResult<Int> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val (responseCode, responseText) = executePost("restart.php", "{}", token)
+                val json = parseJsonResponse(responseText, responseCode)
+
+                if (responseCode in 200..299 || json.optBoolean("success") || json.optString("status") == "success") {
+                    val dataObj = json.optJSONObject("data")
+                    val score = dataObj?.optInt("score") ?: 0
+                    val msg = json.optString("message", "تمت إعادة تعيين نقاط اللاعب وقائمة المهام بنجاح.")
+                    ApiResult(true, score, msg)
+                } else {
+                    val errorMsg = json.optString("message")
+                        .ifEmpty { json.optString("error", "فشلت إعادة البداية ($responseCode)") }
+                    ApiResult(false, null, errorMsg)
+                }
+            } catch (e: Exception) {
+                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء إعادة البداية")
             }
         }
     }
