@@ -15,6 +15,7 @@ import com.example.visionhuntonline.model.Detection
 import com.example.visionhuntonline.model.GameProgress
 import com.example.visionhuntonline.model.GameState
 import com.example.visionhuntonline.network.ApiClient
+import com.example.visionhuntonline.network.CurrentEventData
 import com.example.visionhuntonline.util.NetworkUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,7 +52,90 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _showOfflineDialogEvent = MutableStateFlow(false)
     val showOfflineDialogEvent: StateFlow<Boolean> = _showOfflineDialogEvent.asStateFlow()
 
+    private val _currentEvent = MutableStateFlow<CurrentEventData?>(null)
+    val currentEvent: StateFlow<CurrentEventData?> = _currentEvent.asStateFlow()
+
     private val syncingTaskIds = Collections.synchronizedSet(mutableSetOf<String>())
+
+    fun fetchCurrentEvent(context: Context? = null) {
+        val ctx = context ?: getApplication<Application>().applicationContext
+
+        if (!NetworkUtils.isNetworkConnected(ctx)) return
+
+        val token = UserSessionManager(ctx).getToken()
+
+        viewModelScope.launch {
+            try {
+                val result = ApiClient.getCurrentEvent(token)
+                if (result.isSuccess) {
+                    _currentEvent.value = result.data
+                }
+            } catch (e: Exception) {
+                Log.e("GameViewModel", "Error fetching current event", e)
+            }
+        }
+    }
+
+    fun fetchAndSyncAccountState(context: Context? = null) {
+        val ctx = context ?: getApplication<Application>().applicationContext
+
+        fetchCurrentEvent(ctx)
+
+        if (!NetworkUtils.isNetworkConnected(ctx)) {
+            Log.d("GameViewModel", "Network not connected, skipping account check")
+            return
+        }
+
+        val sessionManager = UserSessionManager(ctx)
+        val token = sessionManager.getToken()
+
+        if (token.isNullOrEmpty()) {
+            Log.d("GameViewModel", "Token null/empty, skipping account check")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val result = ApiClient.checkAccount(token)
+                if (result.isSuccess && result.data != null) {
+                    val data = result.data
+
+                    data.phone?.let { phone ->
+                        if (phone.isNotEmpty()) sessionManager.updatePhone(phone)
+                    }
+
+                    val taskIds = data.completedTasks.mapNotNull { serverTask ->
+                        CocoTasks.TASK_BY_LABEL[serverTask.objectNameEn.trim().lowercase()]?.id
+                    }.toSet()
+
+                    val dbHelper = CapturedItemDbHelper(ctx)
+
+                    // Purge local database items and image files if event ended or tasks removed on server
+                    val localItems = dbHelper.getAllItems()
+                    for (item in localItems) {
+                        if (item.taskId !in taskIds) {
+                            try {
+                                val file = File(item.imagePath)
+                                if (file.exists()) file.delete()
+                            } catch (e: Exception) {
+                                Log.e("GameViewModel", "Error deleting local image file on sync", e)
+                            }
+                        }
+                    }
+                    dbHelper.deleteItemsNotIn(taskIds)
+
+                    repository.replaceCompletedTasksAndScore(taskIds, data.score)
+                    _gameProgress.value = repository.getProgress()
+
+                    Log.d("GameViewModel", "Account state synced from check.php. Score: ${data.score}, Tasks: ${taskIds.size}")
+                } else {
+                    Log.e("GameViewModel", "Failed to check account state: ${result.message}")
+                }
+            } catch (e: Exception) {
+                Log.e("GameViewModel", "Error fetching account state from check.php", e)
+            }
+        }
+    }
 
     fun resetOfflineDialogEvent() {
         _showOfflineDialogEvent.value = false
@@ -67,8 +151,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _inferenceTime.value = inferenceTimeMs
         _inferenceError.value = null
 
-        val currentCompleted = gameState.value.completedTaskIds
-
         val matchingTasks = results.mapNotNull { detection ->
             val task = CocoTasks.TASK_BY_LABEL[detection.label.trim().lowercase()]
             if (task != null && detection.score >= task.confidenceThreshold) {
@@ -78,11 +160,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         _gameDetections.value = matchingTasks.map { it.second }
 
-        val uncompletedNewTasks = matchingTasks.filter { (task, _) ->
-            task.id !in currentCompleted && task.id !in syncingTaskIds
+        // Allow sending complete_task request on every detection, even if already marked completed locally,
+        // while ignoring tasks currently awaiting network response in syncingTaskIds
+        val candidateTasks = matchingTasks.filter { (task, _) ->
+            task.id !in syncingTaskIds
         }
 
-        if (uncompletedNewTasks.isEmpty()) return
+        if (candidateTasks.isEmpty()) return
 
         val appContext = context?.applicationContext ?: getApplication<Application>().applicationContext
 
@@ -99,13 +183,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val (taskToSync, detectionToSync) = uncompletedNewTasks.first()
+        val (taskToSync, detectionToSync) = candidateTasks.first()
         syncingTaskIds.add(taskToSync.id)
 
         viewModelScope.launch {
             try {
                 val dbHelper = CapturedItemDbHelper(appContext)
-                val existingItems = dbHelper.getAllItems()
 
                 val tempImagePath = if (frameBitmap != null) {
                     try {
@@ -129,24 +212,59 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     score = detectionToSync.score
                 )
 
-                val prospectiveItems = existingItems + newItem
+                val confidenceVal = if (detectionToSync.score <= 1.0f) detectionToSync.score * 100.0 else detectionToSync.score.toDouble()
 
-                // Send sync request to server BEFORE completing task locally
-                val syncResult = ApiClient.sync(
+                // Send complete_task request to server on every detection
+                val result = ApiClient.completeTask(
                     token = token,
-                    completedTasks = prospectiveItems
+                    objectNameEn = taskToSync.label,
+                    confidence = confidenceVal
                 )
 
-                if (syncResult.isSuccess && syncResult.data != null) {
+                if (result.isSuccess && result.data != null) {
+                    val completeData = result.data
+                    val serverScore = completeData.score
+                    val serverTasks = completeData.completedTasks
+
+                    val serverTaskIds = serverTasks.mapNotNull { serverTask ->
+                        CocoTasks.TASK_BY_LABEL[serverTask.objectNameEn.trim().lowercase()]?.id
+                    }.toSet()
+
+                    // Delete old captured image and record for taskToSync.id if previously completed
+                    val oldItem = dbHelper.getItemByTaskId(taskToSync.id)
+                    if (oldItem != null) {
+                        try {
+                            val oldFile = File(oldItem.imagePath)
+                            if (oldFile.exists()) oldFile.delete()
+                        } catch (e: Exception) {
+                            Log.e("GameViewModel", "Error deleting old captured image file", e)
+                        }
+                        dbHelper.deleteItemByTaskId(taskToSync.id)
+                    }
+
+                    // Reconcile local items and image files with server tasks list
+                    val localItems = dbHelper.getAllItems()
+                    for (item in localItems) {
+                        if (item.taskId !in serverTaskIds && item.taskId != taskToSync.id) {
+                            try {
+                                val file = File(item.imagePath)
+                                if (file.exists()) file.delete()
+                            } catch (e: Exception) {
+                                Log.e("GameViewModel", "Error deleting local orphaned image file", e)
+                            }
+                        }
+                    }
+                    dbHelper.deleteItemsNotIn(serverTaskIds + taskToSync.id)
+
                     // SERVER SUCCESS! Complete task locally and save DB item
                     repository.completeTask(taskToSync.id)
                     dbHelper.insertItem(newItem)
 
-                    val newServerScore = syncResult.data.score
-                    repository.updateServerScore(newServerScore)
+                    val updatedCompletedSet = serverTaskIds + taskToSync.id
+                    repository.replaceCompletedTasksAndScore(updatedCompletedSet, serverScore)
                     _gameProgress.value = repository.getProgress()
 
-                    Log.d("GameViewModel", "Successfully synced task ${taskToSync.id} with server. Server score: $newServerScore")
+                    Log.d("GameViewModel", "Successfully completed/updated task ${taskToSync.id} on server. Server score: $serverScore")
                 } else {
                     // SERVER FAILED! Delete temp image, DO NOT mark completed locally
                     if (tempImagePath.isNotEmpty()) {
@@ -156,12 +274,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                             Log.e("GameViewModel", "Error deleting temp file on failure", e)
                         }
                     }
-                    val errorMsg = syncResult.message ?: "فشلت المزامنة مع السيرفر"
-                    Log.e("GameViewModel", "Server sync failed for task ${taskToSync.id}: $errorMsg")
-                    _inferenceError.value = "فشل تسجيل الكشف بالسيرفر: $errorMsg"
+                    val errorMsg = result.message ?: "فشلت عملية تسجيل المهمة بالسيرفر"
+                    Log.e("GameViewModel", "Server completeTask failed for ${taskToSync.id}: $errorMsg")
+                    _inferenceError.value = errorMsg
                 }
             } catch (e: Exception) {
-                Log.e("GameViewModel", "Exception during detection sync with server", e)
+                Log.e("GameViewModel", "Exception during completeTask with server", e)
                 _inferenceError.value = e.localizedMessage ?: "خطأ في الاتصال بالسيرفر"
             } finally {
                 syncingTaskIds.remove(taskToSync.id)
@@ -229,6 +347,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun completeTask(taskId: String) {
-        // Unused directly; tasks are completed via server sync in onDetectionsReceived
+        // Unused directly; tasks are completed via server API in onDetectionsReceived
     }
 }

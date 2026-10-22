@@ -70,6 +70,8 @@ class TasksFragment : Fragment() {
         binding?.btnProfileInfo?.setOnClickListener(profileInfoListener)
         binding?.btnProfileInfoCard?.setOnClickListener(profileInfoListener)
 
+        viewModel.fetchCurrentEvent(requireContext())
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
@@ -83,6 +85,22 @@ class TasksFragment : Fragment() {
                 launch {
                     viewModel.gameState.collect { state ->
                         tasksAdapter.submitData(CocoTasks.GAME_TASKS, state.completedTaskIds)
+                    }
+                }
+                launch {
+                    viewModel.currentEvent.collect { event ->
+                        binding?.let { b ->
+                            b.layoutCurrentEvent.visibility = View.VISIBLE
+                            if (event != null) {
+                                b.tvEventTitle.text = "🏆 ${event.title}"
+                                b.tvEventDescription.text = event.description ?: ""
+                                b.tvEventDescription.visibility = if (event.description.isNullOrEmpty()) View.GONE else View.VISIBLE
+                            } else {
+                                b.tvEventTitle.text = "ℹ️ لا يوجد حدث جارٍ حالياً"
+                                b.tvEventDescription.text = "تابعنا لمعرفة التحديات والفعاليات القادمة!"
+                                b.tvEventDescription.visibility = View.VISIBLE
+                            }
+                        }
                     }
                 }
             }

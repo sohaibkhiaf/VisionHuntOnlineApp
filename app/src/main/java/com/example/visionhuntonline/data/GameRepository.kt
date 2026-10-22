@@ -35,6 +35,15 @@ class GameRepository(context: Context) {
         return true
     }
 
+    fun replaceCompletedTasksAndScore(completedTaskIds: Set<String>, serverScore: Int) {
+        prefs.edit()
+            .putStringSet(KEY_COMPLETED_TASKS, completedTaskIds)
+            .putInt(KEY_SERVER_SCORE, serverScore)
+            .apply()
+
+        _gameState.value = GameState(version = 1, completedTaskIds = completedTaskIds)
+    }
+
     fun updateServerScore(score: Int) {
         prefs.edit().putInt(KEY_SERVER_SCORE, score).apply()
     }

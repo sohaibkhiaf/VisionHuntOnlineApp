@@ -20,10 +20,38 @@ data class AuthData(
     val phone: String? = null
 )
 
-data class SyncData(
+data class ServerTaskItem(
+    val id: Long,
+    val objectNameAr: String,
+    val objectNameEn: String,
+    val rarity: String,
+    val points: Int,
+    val confidence: Double
+)
+
+data class CompleteTaskData(
+    val username: String,
     val score: Int,
     val completedTasksCount: Int,
+    val completedTasks: List<ServerTaskItem>,
     val message: String
+)
+
+data class AccountCheckData(
+    val id: Long,
+    val username: String,
+    val phone: String?,
+    val score: Int,
+    val completedTasks: List<ServerTaskItem>,
+    val completedTasksCount: Int
+)
+
+data class CurrentEventData(
+    val id: Long,
+    val title: String,
+    val description: String?,
+    val startsAt: String?,
+    val endsAt: String?
 )
 
 object ApiClient {
@@ -136,42 +164,66 @@ object ApiClient {
         }
     }
 
-    suspend fun sync(
+    suspend fun completeTask(
         token: String,
-        completedTasks: List<com.example.visionhuntonline.model.CapturedItem>
-    ): ApiResult<SyncData> {
+        objectNameEn: String,
+        confidence: Double
+    ): ApiResult<CompleteTaskData> {
         return withContext(Dispatchers.IO) {
             try {
-                val tasksArray = org.json.JSONArray()
-                for (item in completedTasks) {
-                    val taskObj = JSONObject().apply {
-                        put("object_name_en", item.taskNameEn)
-                        val confidenceVal = if (item.score <= 1.0f) item.score * 100.0f else item.score
-                        put("confidence", confidenceVal)
-                    }
-                    tasksArray.put(taskObj)
-                }
-
                 val jsonBody = JSONObject().apply {
-                    put("completed_tasks", tasksArray)
+                    val taskObj = JSONObject().apply {
+                        put("object_name_en", objectNameEn)
+                        put("confidence", confidence)
+                    }
+                    put("completed_task", taskObj)
                 }
 
-                val (responseCode, responseText) = executePost("sync.php", jsonBody.toString(), token)
+                val (responseCode, responseText) = executePost("complete_task.php", jsonBody.toString(), token)
                 val json = parseJsonResponse(responseText, responseCode)
 
                 if (responseCode in 200..299 || json.optBoolean("success") || json.optString("status") == "success") {
-                    val dataObj = json.optJSONObject("data")
-                    val score = dataObj?.optInt("score") ?: 0
-                    val count = dataObj?.optInt("completed_tasks_count") ?: completedTasks.size
-                    val msg = json.optString("message", "تمت مزامنة المهام وتحديث النقاط بنجاح.")
-                    ApiResult(true, SyncData(score = score, completedTasksCount = count, message = msg), msg)
+                    val dataObj = json.optJSONObject("data") ?: JSONObject()
+                    val username = dataObj.optString("username")
+                    val score = dataObj.optInt("score", 0)
+                    val count = dataObj.optInt("completed_tasks_count", 0)
+
+                    val tasksArray = dataObj.optJSONArray("completed_tasks") ?: org.json.JSONArray()
+                    val tasksList = mutableListOf<ServerTaskItem>()
+
+                    for (i in 0 until tasksArray.length()) {
+                        val taskJson = tasksArray.optJSONObject(i) ?: continue
+                        val confStr = taskJson.optString("confidence", "0")
+                        val confVal = confStr.toDoubleOrNull() ?: taskJson.optDouble("confidence", 0.0)
+
+                        tasksList.add(
+                            ServerTaskItem(
+                                id = taskJson.optLong("id"),
+                                objectNameAr = taskJson.optString("object_name_ar"),
+                                objectNameEn = taskJson.optString("object_name_en"),
+                                rarity = taskJson.optString("rarity"),
+                                points = taskJson.optInt("points"),
+                                confidence = confVal
+                            )
+                        )
+                    }
+
+                    val completeTaskData = CompleteTaskData(
+                        username = username,
+                        score = score,
+                        completedTasksCount = count,
+                        completedTasks = tasksList,
+                        message = json.optString("message", "تم تسجيل المهمة وتحديث النقاط بنجاح.")
+                    )
+
+                    ApiResult(true, completeTaskData, completeTaskData.message)
                 } else {
                     val errorMsg = json.optString("message")
-                        .ifEmpty { json.optString("error", "فشلت المزامنة ($responseCode)") }
+                        .ifEmpty { json.optString("error", "فشل تسجيل المهمة ($responseCode)") }
                     ApiResult(false, null, errorMsg)
                 }
             } catch (e: Exception) {
-                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء المزامنة")
+                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء تسجيل المهمة بالسيرفر")
             }
         }
     }
@@ -198,6 +250,91 @@ object ApiClient {
         }
     }
 
+    suspend fun checkAccount(token: String): ApiResult<AccountCheckData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val (responseCode, responseText) = executeGet("check.php", token)
+                val json = parseJsonResponse(responseText, responseCode)
+
+                if (responseCode in 200..299 || json.optBoolean("success") || json.optString("status") == "success") {
+                    val dataObj = json.optJSONObject("data") ?: JSONObject()
+                    val id = dataObj.optLong("id")
+                    val username = dataObj.optString("username")
+                    val phone = dataObj.optString("phone").takeIf { it.isNotEmpty() }
+                    val score = dataObj.optInt("score", 0)
+                    val count = dataObj.optInt("completed_tasks_count", 0)
+
+                    val tasksArray = dataObj.optJSONArray("completed_tasks") ?: org.json.JSONArray()
+                    val tasksList = mutableListOf<ServerTaskItem>()
+
+                    for (i in 0 until tasksArray.length()) {
+                        val taskJson = tasksArray.optJSONObject(i) ?: continue
+                        val confidenceStr = taskJson.optString("confidence", "0")
+                        val confidenceVal = confidenceStr.toDoubleOrNull() ?: taskJson.optDouble("confidence", 0.0)
+
+                        tasksList.add(
+                            ServerTaskItem(
+                                id = taskJson.optLong("id"),
+                                objectNameAr = taskJson.optString("object_name_ar"),
+                                objectNameEn = taskJson.optString("object_name_en"),
+                                rarity = taskJson.optString("rarity"),
+                                points = taskJson.optInt("points"),
+                                confidence = confidenceVal
+                            )
+                        )
+                    }
+
+                    val accountData = AccountCheckData(
+                        id = id,
+                        username = username,
+                        phone = phone,
+                        score = score,
+                        completedTasks = tasksList,
+                        completedTasksCount = count
+                    )
+
+                    val msg = json.optString("message", "تم استرجاع بيانات الحساب بنجاح")
+                    ApiResult(true, accountData, msg)
+                } else {
+                    val errorMsg = json.optString("message")
+                        .ifEmpty { json.optString("error", "فشل استرجاع بيانات الحساب ($responseCode)") }
+                    ApiResult(false, null, errorMsg)
+                }
+            } catch (e: Exception) {
+                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء الاتصال بالسيرفر")
+            }
+        }
+    }
+
+    suspend fun getCurrentEvent(token: String? = null): ApiResult<CurrentEventData?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val (responseCode, responseText) = executeGet("current_event.php", token)
+                val json = parseJsonResponse(responseText, responseCode)
+
+                val isSuccess = json.optBoolean("success")
+                val dataObj = json.optJSONObject("data")
+
+                if (isSuccess && dataObj != null) {
+                    val eventData = CurrentEventData(
+                        id = dataObj.optLong("id"),
+                        title = dataObj.optString("title"),
+                        description = dataObj.optString("description").takeIf { it.isNotEmpty() },
+                        startsAt = dataObj.optString("starts_at").takeIf { it.isNotEmpty() },
+                        endsAt = dataObj.optString("ends_at").takeIf { it.isNotEmpty() }
+                    )
+                    val msg = json.optString("message", "حدث جارٍ")
+                    ApiResult(true, eventData, msg)
+                } else {
+                    val msg = json.optString("message", "لا يوجد حدث جارٍ حاليًا.")
+                    ApiResult(true, null, msg)
+                }
+            } catch (e: Exception) {
+                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء جلب الحدث الحالي")
+            }
+        }
+    }
+
     private fun executePost(endpoint: String, jsonString: String, token: String?): Pair<Int, String> {
         val fullUrl = if (baseUrl.endsWith("/")) baseUrl + endpoint else "$baseUrl/$endpoint"
         val url = URL(fullUrl)
@@ -220,6 +357,30 @@ object ApiClient {
             writer.write(jsonString)
             writer.flush()
         }
+
+        val responseCode = conn.responseCode
+        val inputStream = if (responseCode in 200..299) conn.inputStream else conn.errorStream
+        val responseText = inputStream?.bufferedReader()?.use(BufferedReader::readText) ?: ""
+
+        conn.disconnect()
+        return Pair(responseCode, responseText)
+    }
+
+    private fun executeGet(endpoint: String, token: String?): Pair<Int, String> {
+        val fullUrl = if (baseUrl.endsWith("/")) baseUrl + endpoint else "$baseUrl/$endpoint"
+        val url = URL(fullUrl)
+
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("Accept", "application/json")
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+
+        if (!token.isNullOrEmpty()) {
+            conn.setRequestProperty("Authorization", "Bearer $token")
+        }
+
+        conn.doInput = true
 
         val responseCode = conn.responseCode
         val inputStream = if (responseCode in 200..299) conn.inputStream else conn.errorStream

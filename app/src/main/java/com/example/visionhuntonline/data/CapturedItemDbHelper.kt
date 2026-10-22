@@ -39,6 +39,38 @@ class CapturedItemDbHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
         return db.insert(TABLE_NAME, null, values)
     }
 
+    fun getItemByTaskId(taskId: String): CapturedItem? {
+        val db = readableDatabase
+        val cursor = db.query(TABLE_NAME, null, "$COLUMN_TASK_ID = ?", arrayOf(taskId), null, null, null)
+        cursor.use {
+            if (it.moveToFirst()) {
+                val idCol = it.getColumnIndex(COLUMN_ID)
+                val taskIdCol = it.getColumnIndex(COLUMN_TASK_ID)
+                val nameArCol = it.getColumnIndex(COLUMN_TASK_NAME_AR)
+                val nameEnCol = it.getColumnIndex(COLUMN_TASK_NAME_EN)
+                val pathCol = it.getColumnIndex(COLUMN_IMAGE_PATH)
+                val timeCol = it.getColumnIndex(COLUMN_TIMESTAMP)
+                val scoreCol = it.getColumnIndex(COLUMN_SCORE)
+
+                return CapturedItem(
+                    id = if (idCol >= 0) it.getLong(idCol) else 0L,
+                    taskId = if (taskIdCol >= 0) it.getString(taskIdCol) ?: "" else "",
+                    taskNameAr = if (nameArCol >= 0) it.getString(nameArCol) ?: "" else "",
+                    taskNameEn = if (nameEnCol >= 0) it.getString(nameEnCol) ?: "" else "",
+                    imagePath = if (pathCol >= 0) it.getString(pathCol) ?: "" else "",
+                    timestamp = if (timeCol >= 0) it.getLong(timeCol) else 0L,
+                    score = if (scoreCol >= 0) it.getFloat(scoreCol) else 0f
+                )
+            }
+        }
+        return null
+    }
+
+    fun deleteItemByTaskId(taskId: String): Int {
+        val db = writableDatabase
+        return db.delete(TABLE_NAME, "$COLUMN_TASK_ID = ?", arrayOf(taskId))
+    }
+
     fun getAllItems(): List<CapturedItem> {
         val list = mutableListOf<CapturedItem>()
         val db = readableDatabase
@@ -67,6 +99,16 @@ class CapturedItemDbHelper(context: Context) : SQLiteOpenHelper(context, DATABAS
             }
         }
         return list
+    }
+
+    fun deleteItemsNotIn(taskIds: Set<String>) {
+        if (taskIds.isEmpty()) {
+            deleteAllItems()
+            return
+        }
+        val db = writableDatabase
+        val placeholders = taskIds.joinToString(",") { "?" }
+        db.delete(TABLE_NAME, "$COLUMN_TASK_ID NOT IN ($placeholders)", taskIds.toTypedArray())
     }
 
     fun deleteAllItems() {

@@ -3,6 +3,7 @@ package com.example.visionhuntonline
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.example.visionhuntonline.data.UserSessionManager
@@ -10,12 +11,14 @@ import com.example.visionhuntonline.databinding.ActivityMainBinding
 import com.example.visionhuntonline.ui.fragments.CameraFragment
 import com.example.visionhuntonline.ui.fragments.TasksFragment
 import com.example.visionhuntonline.ui.screens.AuthActivity
+import com.example.visionhuntonline.ui.viewmodel.GameViewModel
 import com.example.visionhuntonline.util.NetworkDialogHelper
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val networkHelper = NetworkDialogHelper(this)
+    private val viewModel: GameViewModel by viewModels()
 
     private val tasksFragment by lazy {
         TasksFragment().apply {
@@ -52,6 +55,8 @@ class MainActivity : AppCompatActivity() {
             loadFragment(tasksFragment)
         }
 
+        viewModel.fetchAndSyncAccountState(this)
+
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_tasks -> {
@@ -64,6 +69,13 @@ class MainActivity : AppCompatActivity() {
                 }
                 else -> false
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (UserSessionManager(this).isLoggedIn()) {
+            viewModel.fetchAndSyncAccountState(this)
         }
     }
 
