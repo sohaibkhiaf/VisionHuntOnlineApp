@@ -98,7 +98,7 @@ data class LeaderboardData(
 )
 
 object ApiClient {
-    var baseUrl: String = "http://192.168.1.6/visionhunt/public/api/v1/"
+    var baseUrl: String = "https://mbfabelec.com/visionhunt/api/v1/"
 
     suspend fun checkHealth(): ApiResult<HealthData> {
         return withContext(Dispatchers.IO) {
