@@ -48,12 +48,34 @@ data class AccountCheckData(
     val completedTasksCount: Int
 )
 
-data class CurrentEventData(
+data class EndedPlayer(
+    val rankPosition: Int,
+    val username: String,
+    val score: Int
+)
+
+data class EndedEventData(
     val id: Long,
     val title: String,
     val description: String?,
     val startsAt: String?,
-    val endsAt: String?
+    val endsAt: String?,
+    val players: List<EndedPlayer>
+)
+
+data class EventInfo(
+    val id: Long,
+    val title: String,
+    val description: String?,
+    val startsAt: String?,
+    val endsAt: String?,
+    val players: List<EndedPlayer>? = null
+)
+
+data class CurrentEventData(
+    val event: EventInfo?,
+    val eventType: String, // "ongoing", "upcoming", "ended"
+    val lastEndedEvent: EndedEventData?
 )
 
 data class HealthData(
@@ -76,7 +98,7 @@ data class LeaderboardData(
 )
 
 object ApiClient {
-    var baseUrl: String = "http://192.168.1.6/visionhunt-web/public/api/v1/"
+    var baseUrl: String = "http://192.168.1.6/visionhunt/public/api/v1/"
 
     suspend fun checkHealth(): ApiResult<HealthData> {
         return withContext(Dispatchers.IO) {
@@ -385,18 +407,70 @@ object ApiClient {
                 val dataObj = json.optJSONObject("data")
 
                 if (isSuccess && dataObj != null) {
-                    val eventData = CurrentEventData(
-                        id = dataObj.optLong("id"),
-                        title = dataObj.optString("title"),
-                        description = dataObj.optString("description").takeIf { it.isNotEmpty() },
-                        startsAt = dataObj.optString("starts_at").takeIf { it.isNotEmpty() },
-                        endsAt = dataObj.optString("ends_at").takeIf { it.isNotEmpty() }
+                    val eventType = dataObj.optString("event_type", "ongoing")
+                    val eventObj = dataObj.optJSONObject("event")
+
+                    val eventInfo = if (eventObj != null) {
+                        val playersList = mutableListOf<EndedPlayer>()
+                        val playersJsonArray = eventObj.optJSONArray("players")
+                        if (playersJsonArray != null) {
+                            for (i in 0 until playersJsonArray.length()) {
+                                val pJson = playersJsonArray.optJSONObject(i) ?: continue
+                                playersList.add(
+                                    EndedPlayer(
+                                        rankPosition = pJson.optInt("rank_position", i + 1),
+                                        username = pJson.optString("username"),
+                                        score = pJson.optInt("score", 0)
+                                    )
+                                )
+                            }
+                        }
+                        EventInfo(
+                            id = eventObj.optLong("id"),
+                            title = eventObj.optString("title"),
+                            description = eventObj.optString("description").takeIf { it.isNotEmpty() },
+                            startsAt = eventObj.optString("starts_at").takeIf { it.isNotEmpty() },
+                            endsAt = eventObj.optString("ends_at").takeIf { it.isNotEmpty() },
+                            players = playersList.takeIf { it.isNotEmpty() }
+                        )
+                    } else null
+
+                    val lastEndedObj = dataObj.optJSONObject("last_ended_event")
+                    val lastEndedEvent = if (lastEndedObj != null) {
+                        val lastPlayersList = mutableListOf<EndedPlayer>()
+                        val lastPlayersArray = lastEndedObj.optJSONArray("players")
+                        if (lastPlayersArray != null) {
+                            for (i in 0 until lastPlayersArray.length()) {
+                                val pJson = lastPlayersArray.optJSONObject(i) ?: continue
+                                lastPlayersList.add(
+                                    EndedPlayer(
+                                        rankPosition = pJson.optInt("rank_position", i + 1),
+                                        username = pJson.optString("username"),
+                                        score = pJson.optInt("score", 0)
+                                    )
+                                )
+                            }
+                        }
+                        EndedEventData(
+                            id = lastEndedObj.optLong("id"),
+                            title = lastEndedObj.optString("title"),
+                            description = lastEndedObj.optString("description").takeIf { it.isNotEmpty() },
+                            startsAt = lastEndedObj.optString("starts_at").takeIf { it.isNotEmpty() },
+                            endsAt = lastEndedObj.optString("ends_at").takeIf { it.isNotEmpty() },
+                            players = lastPlayersList
+                        )
+                    } else null
+
+                    val currentEventData = CurrentEventData(
+                        event = eventInfo,
+                        eventType = eventType,
+                        lastEndedEvent = lastEndedEvent
                     )
-                    val msg = json.optString("message", "حدث جارٍ")
-                    ApiResult(true, eventData, msg, responseCode)
+
+                    val msg = json.optString("message", "حالة الحدث")
+                    ApiResult(true, currentEventData, msg, responseCode)
                 } else {
-                    val msg = json.optString("message", "لا يوجد حدث جارٍ حاليًا.")
-                    ApiResult(true, null, msg, responseCode)
+                    ApiResult(true, null, json.optString("message", "لا يوجد حدث"), responseCode)
                 }
             } catch (e: Exception) {
                 ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء جلب الحدث الحالي", 500)
@@ -532,7 +606,7 @@ object ApiClient {
             responseCode == 503 ->
                 "السيرفر غير متاح حالياً (503 Service Unavailable). تحقق من قاعدة البيانات والسيرفر."
             responseCode == 404 ->
-                "الملف غير موجود على السيرفر (404 Not Found).\nتأكد من وجود الملف داخل C:\\xampp\\htdocs\\visionhunt-web\\public\\api\\v1\\"
+                "الملف غير موجود على السيرفر (404 Not Found).\nتأكد من وجود الملف داخل C:\\xampp\\htdocs\\visionhunt\\public\\api\\v1\\"
             responseCode == 500 ->
                 "خطأ برمجي داخلي في سيرفر PHP (500 Internal Server Error).\nتحقق من سجل أخطاء PHP في XAMPP."
             trimmed.startsWith("<!DOCTYPE", ignoreCase = true) || trimmed.startsWith("<html", ignoreCase = true) ->

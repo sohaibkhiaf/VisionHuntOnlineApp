@@ -65,6 +65,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _miniLeaderboard = MutableStateFlow<List<LeaderboardPlayer>>(emptyList())
     val miniLeaderboard: StateFlow<List<LeaderboardPlayer>> = _miniLeaderboard.asStateFlow()
 
+    private val _itemDetectedSuccessEvent = MutableStateFlow<Pair<String, Int>?>(null)
+    val itemDetectedSuccessEvent: StateFlow<Pair<String, Int>?> = _itemDetectedSuccessEvent.asStateFlow()
+
     private val syncingTaskIds = Collections.synchronizedSet(mutableSetOf<String>())
 
     fun resetOfflineDialogEvent() {
@@ -81,6 +84,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetServerErrorSnackbarEvent() {
         _serverErrorSnackbarEvent.value = null
+    }
+
+    fun resetItemDetectedSuccessEvent() {
+        _itemDetectedSuccessEvent.value = null
     }
 
     fun fetchCurrentEvent(context: Context? = null) {
@@ -365,6 +372,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     val updatedCompletedSet = serverTaskIds + taskToSync.id
                     repository.replaceCompletedTasksAndScore(updatedCompletedSet, serverScore)
                     _gameProgress.value = repository.getProgress()
+
+                    _itemDetectedSuccessEvent.value = Pair(taskToSync.displayNameAr, taskToSync.points)
 
                     // Refresh mini leaderboard after task completion
                     fetchMiniLeaderboard(appContext)

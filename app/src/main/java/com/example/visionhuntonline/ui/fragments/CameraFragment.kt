@@ -2,15 +2,11 @@ package com.example.visionhuntonline.ui.fragments
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -23,12 +19,9 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.example.visionhuntonline.R
-import com.example.visionhuntonline.data.CocoTasks
 import com.example.visionhuntonline.databinding.FragmentCameraBinding
 import com.example.visionhuntonline.detector.ObjectDetectorHelper
 import com.example.visionhuntonline.model.Detection
-import com.example.visionhuntonline.model.TaskDefinition
 import com.example.visionhuntonline.ui.viewmodel.GameViewModel
 import kotlinx.coroutines.launch
 import java.util.concurrent.ExecutorService
@@ -42,8 +35,6 @@ class CameraFragment : Fragment() {
     private val viewModel: GameViewModel by activityViewModels()
     private var cameraExecutor: ExecutorService? = null
     private var detectorHelper: ObjectDetectorHelper? = null
-
-    private var activePageTasks: List<TaskDefinition>? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -70,9 +61,6 @@ class CameraFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
-
-        val currentCompletedIds = viewModel.gameState.value.completedTaskIds
-        activePageTasks = CocoTasks.GAME_TASKS.filter { it.id !in currentCompletedIds }
 
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED
@@ -107,9 +95,29 @@ class CameraFragment : Fragment() {
                     }
                 }
                 launch {
-                    viewModel.gameState.collect { state ->
-                        binding?.let {
-                            updateTasksStatusList(state.completedTaskIds)
+                    viewModel.itemDetectedSuccessEvent.collect { pair ->
+                        if (pair != null) {
+                            val (taskNameAr, points) = pair
+                            binding?.let { b ->
+                                b.tvSuccessMessage.text = "🎉 تم اكتشاف: $taskNameAr (+${points} نقطة)"
+                                b.cardSuccessBanner.visibility = View.VISIBLE
+                                b.cardSuccessBanner.animate()
+                                    .alpha(1f)
+                                    .setDuration(300)
+                                    .withEndAction {
+                                        b.cardSuccessBanner.postDelayed({
+                                            b.cardSuccessBanner.animate()
+                                                .alpha(0f)
+                                                .setDuration(400)
+                                                .withEndAction {
+                                                    b.cardSuccessBanner.visibility = View.GONE
+                                                    viewModel.resetItemDetectedSuccessEvent()
+                                                }
+                                                .start()
+                                        }, 2200)
+                                    }
+                                    .start()
+                            }
                         }
                     }
                 }
@@ -124,56 +132,6 @@ class CameraFragment : Fragment() {
                     }
                 }
             }
-        }
-    }
-
-    private fun updateTasksStatusList(completedIds: Set<String>) {
-        val b = binding ?: return
-        val container = b.layoutTasksStatusContainer
-        container.removeAllViews()
-
-        if (activePageTasks == null) {
-            activePageTasks = CocoTasks.GAME_TASKS.filter { it.id !in completedIds }
-        }
-
-        val tasksToShow = activePageTasks ?: emptyList()
-
-        if (tasksToShow.isEmpty()) {
-            val emptyTv = TextView(requireContext()).apply {
-                text = "تهانينا! جميع المهام مكتملة 🎉"
-                setTextColor(Color.parseColor("#16A34A"))
-                textSize = 14f
-                setTypeface(null, Typeface.BOLD)
-                setPadding(0, 12, 0, 12)
-            }
-            container.addView(emptyTv)
-            return
-        }
-
-        val inflater = LayoutInflater.from(requireContext())
-        for (task in tasksToShow) {
-            val isDone = task.id in completedIds
-            val itemView = inflater.inflate(R.layout.item_camera_task_status, container, false)
-
-            val ivIcon = itemView.findViewById<ImageView>(R.id.iv_status_icon)
-            val tvTitle = itemView.findViewById<TextView>(R.id.tv_title_ar)
-            val tvStatus = itemView.findViewById<TextView>(R.id.tv_status_text)
-
-            tvTitle.text = task.displayNameAr
-
-            if (isDone) {
-                ivIcon.setImageResource(R.drawable.ic_checked)
-                ivIcon.setColorFilter(Color.parseColor("#16A34A"))
-                tvStatus.text = "مكتمل (+${task.points})"
-                tvStatus.setTextColor(Color.parseColor("#16A34A"))
-            } else {
-                ivIcon.setImageResource(R.drawable.ic_unchecked)
-                ivIcon.setColorFilter(Color.parseColor("#94A3B8"))
-                tvStatus.text = "لم يُكتشف"
-                tvStatus.setTextColor(Color.parseColor("#94A3B8"))
-            }
-
-            container.addView(itemView)
         }
     }
 
@@ -256,7 +214,6 @@ class CameraFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        activePageTasks = null
         detectorHelper?.clearObjectDetector()
         detectorHelper = null
         cameraExecutor?.shutdown()

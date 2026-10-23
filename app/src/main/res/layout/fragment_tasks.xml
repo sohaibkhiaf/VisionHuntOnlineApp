@@ -259,6 +259,7 @@
     </com.google.android.material.card.MaterialCardView>
 
     <TextView
+        android:id="@+id/tv_tasks_section_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="start"
@@ -277,5 +278,13 @@
         android:layout_weight="1"
         android:clipToPadding="false"
         android:paddingBottom="12dp" />
+
+    <!-- Container for Ended Event Table -->
+    <LinearLayout
+        android:id="@+id/layout_ended_table_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone" />
 
 </LinearLayout>
