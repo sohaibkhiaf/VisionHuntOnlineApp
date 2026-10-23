@@ -16,6 +16,7 @@ import com.example.visionhuntonline.model.GameProgress
 import com.example.visionhuntonline.model.GameState
 import com.example.visionhuntonline.network.ApiClient
 import com.example.visionhuntonline.network.CurrentEventData
+import com.example.visionhuntonline.network.LeaderboardPlayer
 import com.example.visionhuntonline.util.NetworkUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,10 +53,35 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _showOfflineDialogEvent = MutableStateFlow(false)
     val showOfflineDialogEvent: StateFlow<Boolean> = _showOfflineDialogEvent.asStateFlow()
 
+    private val _sessionExpiredEvent = MutableStateFlow(false)
+    val sessionExpiredEvent: StateFlow<Boolean> = _sessionExpiredEvent.asStateFlow()
+
+    private val _serverErrorSnackbarEvent = MutableStateFlow<String?>(null)
+    val serverErrorSnackbarEvent: StateFlow<String?> = _serverErrorSnackbarEvent.asStateFlow()
+
     private val _currentEvent = MutableStateFlow<CurrentEventData?>(null)
     val currentEvent: StateFlow<CurrentEventData?> = _currentEvent.asStateFlow()
 
+    private val _miniLeaderboard = MutableStateFlow<List<LeaderboardPlayer>>(emptyList())
+    val miniLeaderboard: StateFlow<List<LeaderboardPlayer>> = _miniLeaderboard.asStateFlow()
+
     private val syncingTaskIds = Collections.synchronizedSet(mutableSetOf<String>())
+
+    fun resetOfflineDialogEvent() {
+        _showOfflineDialogEvent.value = false
+    }
+
+    fun resetSessionExpiredEvent() {
+        _sessionExpiredEvent.value = false
+    }
+
+    fun triggerServerErrorSnackbar(message: String) {
+        _serverErrorSnackbarEvent.value = message
+    }
+
+    fun resetServerErrorSnackbarEvent() {
+        _serverErrorSnackbarEvent.value = null
+    }
 
     fun fetchCurrentEvent(context: Context? = null) {
         val ctx = context ?: getApplication<Application>().applicationContext
@@ -76,10 +102,73 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun fetchMiniLeaderboard(context: Context? = null) {
+        val ctx = context ?: getApplication<Application>().applicationContext
+
+        if (!NetworkUtils.isNetworkConnected(ctx)) return
+
+        viewModelScope.launch {
+            try {
+                val currentUsername = UserSessionManager(ctx).getUsername()
+                val currentScore = repository.getProgress().score
+                var foundPlayer: LeaderboardPlayer? = null
+                val allFetchedPlayers = mutableListOf<LeaderboardPlayer>()
+
+                val page1Result = ApiClient.getLeaderboard(page = 1)
+                if (page1Result.isSuccess && page1Result.data != null) {
+                    val data = page1Result.data
+                    allFetchedPlayers.addAll(data.players)
+                    foundPlayer = data.players.find { it.username.equals(currentUsername, ignoreCase = true) }
+
+                    if (foundPlayer == null && data.totalPages > 1) {
+                        for (p in 2..data.totalPages) {
+                            val pageResult = ApiClient.getLeaderboard(page = p)
+                            if (pageResult.isSuccess && pageResult.data != null) {
+                                allFetchedPlayers.addAll(pageResult.data.players)
+                                foundPlayer = pageResult.data.players.find { it.username.equals(currentUsername, ignoreCase = true) }
+                                if (foundPlayer != null) break
+                            }
+                        }
+                    }
+                }
+
+                val targetUserPlayer = foundPlayer ?: LeaderboardPlayer(
+                    rank = allFetchedPlayers.size + 1,
+                    username = currentUsername,
+                    score = currentScore
+                )
+
+                val selected = selectMiniLeaderboardPlayers(allFetchedPlayers, targetUserPlayer)
+                _miniLeaderboard.value = selected
+            } catch (e: Exception) {
+                Log.e("GameViewModel", "Error fetching mini leaderboard", e)
+            }
+        }
+    }
+
+    private fun selectMiniLeaderboardPlayers(
+        allPlayers: List<LeaderboardPlayer>,
+        userPlayer: LeaderboardPlayer
+    ): List<LeaderboardPlayer> {
+        val sortedPlayers = allPlayers.sortedBy { it.rank }
+        if (sortedPlayers.isEmpty()) {
+            return listOf(userPlayer)
+        }
+
+        val top2 = sortedPlayers.take(2)
+
+        return if (userPlayer.rank <= 3) {
+            sortedPlayers.take(3)
+        } else {
+            listOf(top2[0], top2[1], userPlayer)
+        }
+    }
+
     fun fetchAndSyncAccountState(context: Context? = null) {
         val ctx = context ?: getApplication<Application>().applicationContext
 
         fetchCurrentEvent(ctx)
+        fetchMiniLeaderboard(ctx)
 
         if (!NetworkUtils.isNetworkConnected(ctx)) {
             Log.d("GameViewModel", "Network not connected, skipping account check")
@@ -96,7 +185,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             try {
-                val result = ApiClient.checkAccount(token)
+                val result = ApiClient.fetchPlayerStatus(token)
+                if (result.statusCode == 401) {
+                    sessionManager.clearSession()
+                    _sessionExpiredEvent.value = true
+                    return@launch
+                }
+
                 if (result.isSuccess && result.data != null) {
                     val data = result.data
 
@@ -127,18 +222,19 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     repository.replaceCompletedTasksAndScore(taskIds, data.score)
                     _gameProgress.value = repository.getProgress()
 
-                    Log.d("GameViewModel", "Account state synced from check.php. Score: ${data.score}, Tasks: ${taskIds.size}")
+                    // Refresh mini leaderboard with updated score
+                    fetchMiniLeaderboard(ctx)
+
+                    Log.d("GameViewModel", "Account state synced from player_status.php. Score: ${data.score}, Tasks: ${taskIds.size}")
                 } else {
                     Log.e("GameViewModel", "Failed to check account state: ${result.message}")
+                    triggerServerErrorSnackbar(result.message ?: "تعذر الاتصال بالسيرفر جلب بيانات الحساب")
                 }
             } catch (e: Exception) {
-                Log.e("GameViewModel", "Error fetching account state from check.php", e)
+                Log.e("GameViewModel", "Error fetching account state from player_status.php", e)
+                triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر. يرجى المحاولة مرة أخرى لاحقاً.")
             }
         }
-    }
-
-    fun resetOfflineDialogEvent() {
-        _showOfflineDialogEvent.value = false
     }
 
     fun onDetectionsReceived(
@@ -221,6 +317,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     confidence = confidenceVal
                 )
 
+                if (result.statusCode == 401) {
+                    sessionManager.clearSession()
+                    _sessionExpiredEvent.value = true
+                    return@launch
+                }
+
                 if (result.isSuccess && result.data != null) {
                     val completeData = result.data
                     val serverScore = completeData.score
@@ -264,6 +366,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     repository.replaceCompletedTasksAndScore(updatedCompletedSet, serverScore)
                     _gameProgress.value = repository.getProgress()
 
+                    // Refresh mini leaderboard after task completion
+                    fetchMiniLeaderboard(appContext)
+
                     Log.d("GameViewModel", "Successfully completed/updated task ${taskToSync.id} on server. Server score: $serverScore")
                 } else {
                     // SERVER FAILED! Delete temp image, DO NOT mark completed locally
@@ -277,10 +382,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     val errorMsg = result.message ?: "فشلت عملية تسجيل المهمة بالسيرفر"
                     Log.e("GameViewModel", "Server completeTask failed for ${taskToSync.id}: $errorMsg")
                     _inferenceError.value = errorMsg
+                    triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر لتسجيل المهمة: $errorMsg")
                 }
             } catch (e: Exception) {
                 Log.e("GameViewModel", "Exception during completeTask with server", e)
                 _inferenceError.value = e.localizedMessage ?: "خطأ في الاتصال بالسيرفر"
+                triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر. يرجى المحاولة مرة أخرى لاحقاً.")
             } finally {
                 syncingTaskIds.remove(taskToSync.id)
             }
@@ -311,6 +418,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 val result = ApiClient.restart(token)
+                if (result.statusCode == 401) {
+                    sessionManager.clearSession()
+                    _sessionExpiredEvent.value = true
+                    return@launch
+                }
+
                 if (result.isSuccess && result.data != null) {
                     repository.resetGame()
                     repository.updateServerScore(result.data)
@@ -334,14 +447,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     }
 
                     _gameProgress.value = repository.getProgress()
+
+                    // Refresh mini leaderboard after reset
+                    fetchMiniLeaderboard(ctx)
+
                     Log.d("GameViewModel", "Game restarted on server. Server score reset to: ${result.data}")
                 } else {
                     Log.e("GameViewModel", "Server restart failed: ${result.message}")
                     _inferenceError.value = result.message ?: "فشلت إعادة البداية من السيرفر"
+                    triggerServerErrorSnackbar(result.message ?: "فشلت إعادة البداية بالسيرفر")
                 }
             } catch (e: Exception) {
                 Log.e("GameViewModel", "Error calling restart endpoint", e)
                 _inferenceError.value = e.localizedMessage ?: "فشل الاتصال بالسيرفر لإعادة البداية"
+                triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر لإعادة البداية")
             }
         }
     }

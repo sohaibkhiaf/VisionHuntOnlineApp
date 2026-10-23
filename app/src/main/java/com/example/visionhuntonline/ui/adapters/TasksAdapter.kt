@@ -1,9 +1,11 @@
 package com.example.visionhuntonline.ui.adapters
 
+import android.content.res.Configuration
 import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import com.example.visionhuntonline.R
 import com.example.visionhuntonline.databinding.ItemTaskBinding
 import com.example.visionhuntonline.model.TaskDefinition
 
@@ -29,6 +31,9 @@ class TasksAdapter : RecyclerView.Adapter<TasksAdapter.TaskViewHolder>() {
         val task = tasksList[position]
         val isCompleted = task.id in completedTaskIds
 
+        val context = holder.itemView.context
+        val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
         with(holder.binding) {
             tvTitleAr.text = task.displayNameAr
             tvTitleEn.text = task.displayNameEn
@@ -36,15 +41,35 @@ class TasksAdapter : RecyclerView.Adapter<TasksAdapter.TaskViewHolder>() {
             tvPoints.text = "+${task.points}"
 
             if (isCompleted) {
-                tvStatus.text = "✓ مكتمل"
+                ivStatusIcon.setImageResource(R.drawable.ic_checked)
+                ivStatusIcon.setColorFilter(Color.parseColor("#15803D"))
+                tvStatus.text = "مكتمل"
                 tvStatus.setTextColor(Color.parseColor("#15803D"))
-                cardTask.setCardBackgroundColor(Color.parseColor("#F0FDF4"))
-                cardTask.strokeColor = Color.parseColor("#86EFAC")
+
+                if (isDarkTheme) {
+                    cardStatusBadge.setCardBackgroundColor(Color.parseColor("#064E3B"))
+                    cardTask.setCardBackgroundColor(Color.parseColor("#022C22"))
+                    cardTask.strokeColor = Color.parseColor("#059669")
+                } else {
+                    cardStatusBadge.setCardBackgroundColor(Color.parseColor("#DCFCE7"))
+                    cardTask.setCardBackgroundColor(Color.parseColor("#F0FDF4"))
+                    cardTask.strokeColor = Color.parseColor("#86EFAC")
+                }
             } else {
-                tvStatus.text = "○ لم يُكتشف"
+                ivStatusIcon.setImageResource(R.drawable.ic_unchecked)
+                ivStatusIcon.setColorFilter(Color.parseColor("#64748B"))
+                tvStatus.text = "لم يُكتشف"
                 tvStatus.setTextColor(Color.parseColor("#64748B"))
-                cardTask.setCardBackgroundColor(Color.WHITE)
-                cardTask.strokeColor = Color.parseColor("#E2E8F0")
+
+                if (isDarkTheme) {
+                    cardStatusBadge.setCardBackgroundColor(Color.parseColor("#334155"))
+                    cardTask.setCardBackgroundColor(Color.parseColor("#1E293B"))
+                    cardTask.strokeColor = Color.parseColor("#334155")
+                } else {
+                    cardStatusBadge.setCardBackgroundColor(Color.parseColor("#F1F5F9"))
+                    cardTask.setCardBackgroundColor(Color.WHITE)
+                    cardTask.strokeColor = Color.parseColor("#E2E8F0")
+                }
             }
         }
     }

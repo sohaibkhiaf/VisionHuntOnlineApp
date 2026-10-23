@@ -62,20 +62,29 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <!-- Camera Status Badge -->
-            <TextView
-                android:id="@+id/tv_badge"
+            <!-- Camera Status Badge Container -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="top|start"
                 android:layout_margin="12dp"
-                android:background="#CC0F172A"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="6dp"
-                android:text="الكشف نشط"
-                android:textColor="#86EFAC"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+                app:cardBackgroundColor="#CC0F172A"
+                app:cardCornerRadius="100dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp">
+
+                <TextView
+                    android:id="@+id/tv_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:text="الكشف نشط"
+                    android:textColor="#86EFAC"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+            </com.google.android.material.card.MaterialCardView>
 
         </FrameLayout>
 
@@ -143,13 +152,22 @@
                     android:textSize="13sp" />
 
                 <TextView
-                    android:id="@+id/tv_task_status_list"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="start"
+                    android:layout_marginTop="14dp"
+                    android:text="قائمة المهام المتاحة"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <!-- Container for small task items -->
+                <LinearLayout
+                    android:id="@+id/layout_tasks_status_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:textColor="@color/text_muted"
-                    android:textSize="13sp" />
+                    android:orientation="vertical" />
 
             </LinearLayout>
 

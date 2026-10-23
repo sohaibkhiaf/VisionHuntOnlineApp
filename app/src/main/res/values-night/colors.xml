@@ -10,7 +10,7 @@
     <color name="card_stroke">#334155</color>
 
     <!-- Task Item Specific Colors (Dark) -->
-    <color name="task_card_background">#FFFFFF</color>
-    <color name="task_title_ar_color">#0F172A</color>
-    <color name="task_text_color">#64748B</color>
+    <color name="task_card_background">#1E293B</color>
+    <color name="task_title_ar_color">#F8FAFC</color>
+    <color name="task_text_color">#94A3B8</color>
 </resources>

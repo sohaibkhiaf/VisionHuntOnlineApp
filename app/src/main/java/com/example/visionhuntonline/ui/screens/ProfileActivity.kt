@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.visionhuntonline.data.UserSessionManager
@@ -39,17 +40,24 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        binding.btnBack.setOnClickListener {
-            finish()
-        }
-
         binding.btnUpdateProfile.setOnClickListener {
             handleProfileUpdate()
         }
 
         binding.btnLogout.setOnClickListener {
-            handleLogout()
+            showLogoutConfirmationDialog()
         }
+    }
+
+    private fun showLogoutConfirmationDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("تسجيل الخروج")
+            .setMessage("هل أنت متأكد من رغبتك في تسجيل الخروج؟")
+            .setPositiveButton("تسجيل الخروج") { _, _ ->
+                handleLogout()
+            }
+            .setNegativeButton("إلغاء", null)
+            .show()
     }
 
     private fun handleProfileUpdate() {
@@ -67,7 +75,7 @@ class ProfileActivity : AppCompatActivity() {
         val newPassword = binding.etNewPassword.text?.toString()?.trim() ?: ""
 
         if (oldPassword.isEmpty()) {
-            Toast.makeText(this, "يرجى إدخال كلمة المرور القديمة لتأكيد التحديث", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "يرجى إدخال كلمة المرور الحالية لتأكيد التحديث", Toast.LENGTH_SHORT).show()
             binding.etOldPassword.requestFocus()
             return
         }

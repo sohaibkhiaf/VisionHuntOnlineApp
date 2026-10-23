@@ -2,11 +2,15 @@ package com.example.visionhuntonline.ui.fragments
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -19,6 +23,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.example.visionhuntonline.R
 import com.example.visionhuntonline.data.CocoTasks
 import com.example.visionhuntonline.databinding.FragmentCameraBinding
 import com.example.visionhuntonline.detector.ObjectDetectorHelper
@@ -124,6 +129,8 @@ class CameraFragment : Fragment() {
 
     private fun updateTasksStatusList(completedIds: Set<String>) {
         val b = binding ?: return
+        val container = b.layoutTasksStatusContainer
+        container.removeAllViews()
 
         if (activePageTasks == null) {
             activePageTasks = CocoTasks.GAME_TASKS.filter { it.id !in completedIds }
@@ -131,18 +138,43 @@ class CameraFragment : Fragment() {
 
         val tasksToShow = activePageTasks ?: emptyList()
 
-        val sb = StringBuilder()
         if (tasksToShow.isEmpty()) {
-            sb.append("تهانينا! جميع المهام مكتملة 🎉\n")
-        } else {
-            sb.append("قائمة المهام غير المكتملة:\n")
-            tasksToShow.forEach { task ->
-                val isDone = task.id in completedIds
-                val statusStr = if (isDone) "✓ مكتمل (+${task.points})" else "○ لم يُكتشف بعد"
-                sb.append("• ").append(task.displayNameAr).append(": ").append(statusStr).append("\n")
+            val emptyTv = TextView(requireContext()).apply {
+                text = "تهانينا! جميع المهام مكتملة 🎉"
+                setTextColor(Color.parseColor("#16A34A"))
+                textSize = 14f
+                setTypeface(null, Typeface.BOLD)
+                setPadding(0, 12, 0, 12)
             }
+            container.addView(emptyTv)
+            return
         }
-        b.tvTaskStatusList.text = sb.toString()
+
+        val inflater = LayoutInflater.from(requireContext())
+        for (task in tasksToShow) {
+            val isDone = task.id in completedIds
+            val itemView = inflater.inflate(R.layout.item_camera_task_status, container, false)
+
+            val ivIcon = itemView.findViewById<ImageView>(R.id.iv_status_icon)
+            val tvTitle = itemView.findViewById<TextView>(R.id.tv_title_ar)
+            val tvStatus = itemView.findViewById<TextView>(R.id.tv_status_text)
+
+            tvTitle.text = task.displayNameAr
+
+            if (isDone) {
+                ivIcon.setImageResource(R.drawable.ic_checked)
+                ivIcon.setColorFilter(Color.parseColor("#16A34A"))
+                tvStatus.text = "مكتمل (+${task.points})"
+                tvStatus.setTextColor(Color.parseColor("#16A34A"))
+            } else {
+                ivIcon.setImageResource(R.drawable.ic_unchecked)
+                ivIcon.setColorFilter(Color.parseColor("#94A3B8"))
+                tvStatus.text = "لم يُكتشف"
+                tvStatus.setTextColor(Color.parseColor("#94A3B8"))
+            }
+
+            container.addView(itemView)
+        }
     }
 
     private fun startCamera() {

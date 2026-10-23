@@ -11,13 +11,15 @@ import java.net.URL
 data class ApiResult<T>(
     val isSuccess: Boolean,
     val data: T? = null,
-    val message: String? = null
+    val message: String? = null,
+    val statusCode: Int = 200
 )
 
 data class AuthData(
     val token: String,
     val username: String,
-    val phone: String? = null
+    val phone: String? = null,
+    val score: Int = 0
 )
 
 data class ServerTaskItem(
@@ -54,8 +56,52 @@ data class CurrentEventData(
     val endsAt: String?
 )
 
+data class HealthData(
+    val status: String,
+    val serverTime: String?
+)
+
+data class LeaderboardPlayer(
+    val rank: Int,
+    val username: String,
+    val score: Int,
+    val updatedAt: String? = null
+)
+
+data class LeaderboardData(
+    val players: List<LeaderboardPlayer>,
+    val totalPlayers: Int,
+    val page: Int,
+    val totalPages: Int
+)
+
 object ApiClient {
     var baseUrl: String = "http://192.168.1.6/visionhunt-web/public/api/v1/"
+
+    suspend fun checkHealth(): ApiResult<HealthData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val (responseCode, responseText) = executeGet("health.php", null)
+                val json = parseJsonResponse(responseText, responseCode)
+
+                val isSuccess = json.optBoolean("success")
+                val dataObj = json.optJSONObject("data")
+                val status = dataObj?.optString("status") ?: if (isSuccess) "ok" else "unavailable"
+
+                if (responseCode == 200 && isSuccess && status == "ok") {
+                    val healthData = HealthData(
+                        status = status,
+                        serverTime = dataObj?.optString("server_time")
+                    )
+                    ApiResult(true, healthData, "السيرفر يعمل بشكل طبيعي", responseCode)
+                } else {
+                    ApiResult(false, null, "السيرفر غير متاح حالياً ($responseCode)", responseCode)
+                }
+            } catch (e: Exception) {
+                ApiResult(false, null, e.localizedMessage ?: "تعذر الاتصال بالسيرفر", 503)
+            }
+        }
+    }
 
     suspend fun register(username: String, password: String, phone: String): ApiResult<AuthData> {
         return withContext(Dispatchers.IO) {
@@ -63,23 +109,27 @@ object ApiClient {
                 val jsonBody = JSONObject().apply {
                     put("username", username)
                     put("password", password)
-                    put("phone", phone)
+                    if (phone.isNotEmpty()) put("phone", phone)
                 }
                 val (responseCode, responseText) = executePost("register.php", jsonBody.toString(), null)
                 val json = parseJsonResponse(responseText, responseCode)
 
-                if (responseCode in 200..299 || json.optString("status") == "success") {
+                if (responseCode == 201 || responseCode in 200..299 || json.optBoolean("success")) {
                     val dataObj = json.optJSONObject("data")
                     val token = dataObj?.optString("token") ?: json.optString("token")
+                    val score = dataObj?.optInt("score", 0) ?: 0
                     val msg = json.optString("message", "تم إنشاء الحساب بنجاح")
-                    ApiResult(true, AuthData(token = token, username = username, phone = phone), msg)
+                    ApiResult(true, AuthData(token = token, username = username, phone = phone, score = score), msg, responseCode)
                 } else {
-                    val errorMsg = json.optString("message")
-                        .ifEmpty { json.optString("error", "فشل إنشاء الحساب ($responseCode)") }
-                    ApiResult(false, null, errorMsg)
+                    val errorMsg = when (responseCode) {
+                        409 -> "اسم المستخدم مسجل مسبقاً، اختر اسماً آخر"
+                        429 -> "تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار قليلاً"
+                        else -> json.optString("message").ifEmpty { "فشل إنشاء الحساب ($responseCode)" }
+                    }
+                    ApiResult(false, null, errorMsg, responseCode)
                 }
             } catch (e: Exception) {
-                ApiResult(false, null, e.localizedMessage ?: "خطأ في الاتصال بالسيرفر")
+                ApiResult(false, null, e.localizedMessage ?: "خطأ في الاتصال بالسيرفر", 500)
             }
         }
     }
@@ -94,23 +144,30 @@ object ApiClient {
                 val (responseCode, responseText) = executePost("login.php", jsonBody.toString(), null)
                 val json = parseJsonResponse(responseText, responseCode)
 
-                if (responseCode in 200..299 || json.optString("status") == "success") {
+                if (responseCode in 200..299 || json.optBoolean("success")) {
                     val dataObj = json.optJSONObject("data")
+                    val playerObj = dataObj?.optJSONObject("player")
+
                     val token = dataObj?.optString("token") ?: json.optString("token")
-                    val phone = dataObj?.optString("phone") ?: ""
+                    val phone = playerObj?.optString("phone") ?: dataObj?.optString("phone") ?: ""
+                    val score = playerObj?.optInt("score") ?: dataObj?.optInt("score") ?: 0
                     val msg = json.optString("message", "تم تسجيل الدخول بنجاح")
+
                     if (token.isNotEmpty()) {
-                        ApiResult(true, AuthData(token = token, username = username, phone = phone), msg)
+                        ApiResult(true, AuthData(token = token, username = username, phone = phone, score = score), msg, responseCode)
                     } else {
-                        ApiResult(false, null, "لم يتم العثور على رمز الدخول في الاستجابة")
+                        ApiResult(false, null, "لم يتم العثور على رمز الدخول في الاستجابة", responseCode)
                     }
                 } else {
-                    val errorMsg = json.optString("message")
-                        .ifEmpty { json.optString("error", "اسم المستخدم أو كلمة المرور غير صحيحة ($responseCode)") }
-                    ApiResult(false, null, errorMsg)
+                    val errorMsg = when (responseCode) {
+                        401 -> "اسم المستخدم أو كلمة المرور غير صحيحة"
+                        429 -> "تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار قليلاً"
+                        else -> json.optString("message").ifEmpty { "فشل تسجيل الدخول ($responseCode)" }
+                    }
+                    ApiResult(false, null, errorMsg, responseCode)
                 }
             } catch (e: Exception) {
-                ApiResult(false, null, e.localizedMessage ?: "خطأ في الاتصال بالسيرفر")
+                ApiResult(false, null, e.localizedMessage ?: "خطأ في الاتصال بالسيرفر", 500)
             }
         }
     }
@@ -125,22 +182,25 @@ object ApiClient {
             try {
                 val jsonBody = JSONObject().apply {
                     put("old_password", oldPassword)
-                    if (!phone.isNullOrBlank()) put("phone", phone)
+                    if (!phone.isNullOrBlank()) put("phone", phone) else put("phone", "")
                     if (!newPassword.isNullOrBlank()) put("new_password", newPassword)
                 }
                 val (responseCode, responseText) = executePost("profile.php", jsonBody.toString(), token)
                 val json = parseJsonResponse(responseText, responseCode)
 
-                if (responseCode in 200..299 || json.optString("status") == "success") {
+                if (responseCode in 200..299 || json.optBoolean("success")) {
                     val msg = json.optString("message", "تم تحديث البيانات بنجاح")
-                    ApiResult(true, msg, msg)
+                    ApiResult(true, msg, msg, responseCode)
                 } else {
-                    val errorMsg = json.optString("message")
-                        .ifEmpty { json.optString("error", "فشل تحديث البيانات ($responseCode)") }
-                    ApiResult(false, null, errorMsg)
+                    val errorMsg = when (responseCode) {
+                        403 -> "كلمة المرور القديمة غير صحيحة"
+                        401 -> "انتهت صلاحية الجلسة، يرجى إعادة تسجيل الدخول"
+                        else -> json.optString("message").ifEmpty { "فشل تحديث البيانات ($responseCode)" }
+                    }
+                    ApiResult(false, null, errorMsg, responseCode)
                 }
             } catch (e: Exception) {
-                ApiResult(false, null, e.localizedMessage ?: "خطأ في الاتصال بالسيرفر")
+                ApiResult(false, null, e.localizedMessage ?: "خطأ في الاتصال بالسيرفر", 500)
             }
         }
     }
@@ -150,16 +210,16 @@ object ApiClient {
             try {
                 val (responseCode, responseText) = executePost("logout.php", "{}", token)
                 val json = parseJsonResponse(responseText, responseCode)
-                if (responseCode in 200..299 || json.optBoolean("success") || json.optString("status") == "success") {
+                if (responseCode in 200..299 || json.optBoolean("success")) {
                     val msg = json.optString("message", "تم تسجيل الخروج بنجاح")
-                    ApiResult(true, msg, msg)
+                    ApiResult(true, msg, msg, responseCode)
                 } else {
                     val errorMsg = json.optString("message")
                         .ifEmpty { json.optString("error", "فشل تسجيل الخروج من السيرفر ($responseCode)") }
-                    ApiResult(false, null, errorMsg)
+                    ApiResult(false, null, errorMsg, responseCode)
                 }
             } catch (e: Exception) {
-                ApiResult(false, null, e.localizedMessage ?: "فشل الاتصال بالسيرفر لتسجيل الخروج")
+                ApiResult(false, null, e.localizedMessage ?: "فشل الاتصال بالسيرفر لتسجيل الخروج", 500)
             }
         }
     }
@@ -182,7 +242,7 @@ object ApiClient {
                 val (responseCode, responseText) = executePost("complete_task.php", jsonBody.toString(), token)
                 val json = parseJsonResponse(responseText, responseCode)
 
-                if (responseCode in 200..299 || json.optBoolean("success") || json.optString("status") == "success") {
+                if (responseCode in 200..299 || json.optBoolean("success")) {
                     val dataObj = json.optJSONObject("data") ?: JSONObject()
                     val username = dataObj.optString("username")
                     val score = dataObj.optInt("score", 0)
@@ -216,14 +276,17 @@ object ApiClient {
                         message = json.optString("message", "تم تسجيل المهمة وتحديث النقاط بنجاح.")
                     )
 
-                    ApiResult(true, completeTaskData, completeTaskData.message)
+                    ApiResult(true, completeTaskData, completeTaskData.message, responseCode)
                 } else {
-                    val errorMsg = json.optString("message")
-                        .ifEmpty { json.optString("error", "فشل تسجيل المهمة ($responseCode)") }
-                    ApiResult(false, null, errorMsg)
+                    val errorMsg = when (responseCode) {
+                        409 -> "لا يوجد حدث جارٍ حالياً يقبل تسجيل المهام"
+                        401 -> "انتهت صلاحية الجلسة، يرجى إعادة تسجيل الدخول"
+                        else -> json.optString("message").ifEmpty { "فشل تسجيل المهمة ($responseCode)" }
+                    }
+                    ApiResult(false, null, errorMsg, responseCode)
                 }
             } catch (e: Exception) {
-                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء تسجيل المهمة بالسيرفر")
+                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء تسجيل المهمة بالسيرفر", 500)
             }
         }
     }
@@ -234,29 +297,31 @@ object ApiClient {
                 val (responseCode, responseText) = executePost("restart.php", "{}", token)
                 val json = parseJsonResponse(responseText, responseCode)
 
-                if (responseCode in 200..299 || json.optBoolean("success") || json.optString("status") == "success") {
+                if (responseCode in 200..299 || json.optBoolean("success")) {
                     val dataObj = json.optJSONObject("data")
                     val score = dataObj?.optInt("score") ?: 0
                     val msg = json.optString("message", "تمت إعادة تعيين نقاط اللاعب وقائمة المهام بنجاح.")
-                    ApiResult(true, score, msg)
+                    ApiResult(true, score, msg, responseCode)
                 } else {
-                    val errorMsg = json.optString("message")
-                        .ifEmpty { json.optString("error", "فشلت إعادة البداية ($responseCode)") }
-                    ApiResult(false, null, errorMsg)
+                    val errorMsg = when (responseCode) {
+                        401 -> "انتهت صلاحية الجلسة، يرجى إعادة تسجيل الدخول"
+                        else -> json.optString("message").ifEmpty { "فشلت إعادة البداية ($responseCode)" }
+                    }
+                    ApiResult(false, null, errorMsg, responseCode)
                 }
             } catch (e: Exception) {
-                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء إعادة البداية")
+                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء إعادة البداية", 500)
             }
         }
     }
 
-    suspend fun checkAccount(token: String): ApiResult<AccountCheckData> {
+    suspend fun fetchPlayerStatus(token: String): ApiResult<AccountCheckData> {
         return withContext(Dispatchers.IO) {
             try {
-                val (responseCode, responseText) = executeGet("check.php", token)
+                val (responseCode, responseText) = executeGet("player_status.php", token)
                 val json = parseJsonResponse(responseText, responseCode)
 
-                if (responseCode in 200..299 || json.optBoolean("success") || json.optString("status") == "success") {
+                if (responseCode in 200..299 || json.optBoolean("success")) {
                     val dataObj = json.optJSONObject("data") ?: JSONObject()
                     val id = dataObj.optLong("id")
                     val username = dataObj.optString("username")
@@ -293,18 +358,22 @@ object ApiClient {
                         completedTasksCount = count
                     )
 
-                    val msg = json.optString("message", "تم استرجاع بيانات الحساب بنجاح")
-                    ApiResult(true, accountData, msg)
+                    val msg = json.optString("message", "تم استرجاع حالة اللاعب بنجاح")
+                    ApiResult(true, accountData, msg, responseCode)
                 } else {
-                    val errorMsg = json.optString("message")
-                        .ifEmpty { json.optString("error", "فشل استرجاع بيانات الحساب ($responseCode)") }
-                    ApiResult(false, null, errorMsg)
+                    val errorMsg = when (responseCode) {
+                        401 -> "انتهت صلاحية الجلسة، يرجى إعادة تسجيل الدخول"
+                        else -> json.optString("message").ifEmpty { "فشل استرجاع حالة اللاعب ($responseCode)" }
+                    }
+                    ApiResult(false, null, errorMsg, responseCode)
                 }
             } catch (e: Exception) {
-                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء الاتصال بالسيرفر")
+                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء الاتصال بالسيرفر", 500)
             }
         }
     }
+
+    suspend fun checkAccount(token: String): ApiResult<AccountCheckData> = fetchPlayerStatus(token)
 
     suspend fun getCurrentEvent(token: String? = null): ApiResult<CurrentEventData?> {
         return withContext(Dispatchers.IO) {
@@ -324,13 +393,60 @@ object ApiClient {
                         endsAt = dataObj.optString("ends_at").takeIf { it.isNotEmpty() }
                     )
                     val msg = json.optString("message", "حدث جارٍ")
-                    ApiResult(true, eventData, msg)
+                    ApiResult(true, eventData, msg, responseCode)
                 } else {
                     val msg = json.optString("message", "لا يوجد حدث جارٍ حاليًا.")
-                    ApiResult(true, null, msg)
+                    ApiResult(true, null, msg, responseCode)
                 }
             } catch (e: Exception) {
-                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء جلب الحدث الحالي")
+                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء جلب الحدث الحالي", 500)
+            }
+        }
+    }
+
+    suspend fun getLeaderboard(page: Int = 1): ApiResult<LeaderboardData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val (responseCode, responseText) = executeGet("leaderboard.php?page=$page", null)
+                val json = parseJsonResponse(responseText, responseCode)
+
+                if (responseCode in 200..299 || json.optBoolean("success")) {
+                    val dataObj = json.optJSONObject("data") ?: JSONObject()
+                    val playersArray = dataObj.optJSONArray("players") ?: org.json.JSONArray()
+                    val playersList = mutableListOf<LeaderboardPlayer>()
+
+                    for (i in 0 until playersArray.length()) {
+                        val playerJson = playersArray.optJSONObject(i) ?: continue
+                        playersList.add(
+                            LeaderboardPlayer(
+                                rank = playerJson.optInt("rank", i + 1),
+                                username = playerJson.optString("username"),
+                                score = playerJson.optInt("score", 0),
+                                updatedAt = playerJson.optString("updated_at")
+                            )
+                        )
+                    }
+
+                    val paginationObj = dataObj.optJSONObject("pagination")
+                    val totalPlayers = paginationObj?.optInt("total_players") ?: playersList.size
+                    val currentPage = paginationObj?.optInt("page") ?: page
+                    val totalPages = paginationObj?.optInt("total_pages") ?: 1
+
+                    val leaderboardData = LeaderboardData(
+                        players = playersList,
+                        totalPlayers = totalPlayers,
+                        page = currentPage,
+                        totalPages = totalPages
+                    )
+
+                    val msg = json.optString("message", "تم جلب الترتيب بنجاح")
+                    ApiResult(true, leaderboardData, msg, responseCode)
+                } else {
+                    val errorMsg = json.optString("message").ifEmpty { "فشل جلب الترتيب ($responseCode)" }
+                    ApiResult(false, null, errorMsg, responseCode)
+                }
+            } catch (e: Exception) {
+                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء جلب الترتيب", 500)
             }
         }
     }
@@ -411,6 +527,10 @@ object ApiClient {
 
         // 3. Clear informative error based on response code and content
         val errorDetail = when {
+            responseCode == 401 ->
+                "انتهت صلاحية الجلسة، يرجى إعادة تسجيل الدخول (401)"
+            responseCode == 503 ->
+                "السيرفر غير متاح حالياً (503 Service Unavailable). تحقق من قاعدة البيانات والسيرفر."
             responseCode == 404 ->
                 "الملف غير موجود على السيرفر (404 Not Found).\nتأكد من وجود الملف داخل C:\\xampp\\htdocs\\visionhunt-web\\public\\api\\v1\\"
             responseCode == 500 ->
