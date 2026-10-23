@@ -70,6 +70,11 @@ class CameraFragment : Fragment() {
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
 
+        binding?.swipeRefreshCamera?.setOnRefreshListener {
+            viewModel.fetchCurrentEvent(requireContext())
+            binding?.swipeRefreshCamera?.isRefreshing = false
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {

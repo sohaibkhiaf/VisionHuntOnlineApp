@@ -32,6 +32,11 @@ class ProfileActivity : AppCompatActivity() {
 
         loadUserData()
         setupListeners()
+
+        binding.swipeRefreshProfile.setOnRefreshListener {
+            loadUserData()
+            binding.swipeRefreshProfile.isRefreshing = false
+        }
     }
 
     private fun loadUserData() {

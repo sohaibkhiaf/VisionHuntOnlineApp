@@ -87,6 +87,13 @@ class TasksFragment : Fragment() {
         viewModel.fetchCurrentEvent(requireContext())
         viewModel.fetchMiniLeaderboard(requireContext())
 
+        binding?.swipeRefresh?.setOnRefreshListener {
+            viewModel.fetchCurrentEvent(requireContext())
+            viewModel.fetchMiniLeaderboard(requireContext())
+            viewModel.fetchAndSyncAccountState(requireContext())
+            binding?.swipeRefresh?.isRefreshing = false
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
