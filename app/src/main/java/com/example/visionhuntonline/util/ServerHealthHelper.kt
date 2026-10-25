@@ -38,6 +38,7 @@ class ServerHealthHelper(private val activity: Activity) {
 
         val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_server_error, null)
         val btnRetry = dialogView.findViewById<View>(R.id.btn_retry_server)
+        val btnClose = dialogView.findViewById<View>(R.id.btn_close_server)
 
         val dialog = AlertDialog.Builder(activity)
             .setView(dialogView)
@@ -54,13 +55,17 @@ class ServerHealthHelper(private val activity: Activity) {
                     btnRetry.isEnabled = true
                     if (result.isSuccess) {
                         dismissServerErrorDialog()
-                        Toast.makeText(activity, "تم الاتصال بالسيرفر بنجاح", Toast.LENGTH_SHORT).show()
+                        GameToast.show(activity, "تم الاتصال بالسيرفر بنجاح", Toast.LENGTH_SHORT)
                         onHealthy?.invoke()
                     } else {
-                        Toast.makeText(activity, result.message ?: "ما زال التعذر قائماً، تحقق من السيرفر!", Toast.LENGTH_SHORT).show()
+                        GameToast.show(activity, "تعذر الاتصال بالسيرفر، يرجى المحاولة لاحقاً", Toast.LENGTH_SHORT)
                     }
                 }
             }
+        }
+
+        btnClose?.setOnClickListener {
+            dismissServerErrorDialog()
         }
 
         serverErrorDialog = dialog

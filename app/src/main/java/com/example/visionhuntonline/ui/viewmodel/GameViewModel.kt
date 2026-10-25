@@ -15,6 +15,7 @@ import com.example.visionhuntonline.model.Detection
 import com.example.visionhuntonline.model.GameProgress
 import com.example.visionhuntonline.model.GameState
 import com.example.visionhuntonline.network.ApiClient
+import com.example.visionhuntonline.network.AppVersionData
 import com.example.visionhuntonline.network.CurrentEventData
 import com.example.visionhuntonline.network.LeaderboardPlayer
 import com.example.visionhuntonline.util.NetworkUtils
@@ -25,6 +26,12 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Collections
+
+data class ServerErrorNotice(
+    val title: String,
+    val message: String,
+    val isNoActiveEvent: Boolean = false
+)
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -56,8 +63,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _sessionExpiredEvent = MutableStateFlow(false)
     val sessionExpiredEvent: StateFlow<Boolean> = _sessionExpiredEvent.asStateFlow()
 
-    private val _serverErrorSnackbarEvent = MutableStateFlow<String?>(null)
-    val serverErrorSnackbarEvent: StateFlow<String?> = _serverErrorSnackbarEvent.asStateFlow()
+    private val _serverErrorSnackbarEvent = MutableStateFlow<ServerErrorNotice?>(null)
+    val serverErrorSnackbarEvent: StateFlow<ServerErrorNotice?> = _serverErrorSnackbarEvent.asStateFlow()
 
     private val _currentEvent = MutableStateFlow<CurrentEventData?>(null)
     val currentEvent: StateFlow<CurrentEventData?> = _currentEvent.asStateFlow()
@@ -67,6 +74,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _itemDetectedSuccessEvent = MutableStateFlow<Pair<String, Int>?>(null)
     val itemDetectedSuccessEvent: StateFlow<Pair<String, Int>?> = _itemDetectedSuccessEvent.asStateFlow()
+
+    private val _appUpdateEvent = MutableStateFlow<AppVersionData?>(null)
+    val appUpdateEvent: StateFlow<AppVersionData?> = _appUpdateEvent.asStateFlow()
 
     private val syncingTaskIds = Collections.synchronizedSet(mutableSetOf<String>())
 
@@ -78,8 +88,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _sessionExpiredEvent.value = false
     }
 
-    fun triggerServerErrorSnackbar(message: String) {
-        _serverErrorSnackbarEvent.value = message
+    fun triggerServerErrorSnackbar(
+        message: String = "تعذر الاتصال بالسيرفر لتسجيل المهمة",
+        title: String = "⚠️ تعذر الاتصال بالسيرفر",
+        isNoActiveEvent: Boolean = false
+    ) {
+        _serverErrorSnackbarEvent.value = ServerErrorNotice(title, message, isNoActiveEvent)
+    }
+
+    fun triggerNoActiveEventNotice(message: String = "لا يمكن تسجيل المهام في الوقت الحالي لعدم وجود حدث نشط.") {
+        _serverErrorSnackbarEvent.value = ServerErrorNotice(
+            title = "ℹ️ لا يوجد حدث جارٍ حالياً",
+            message = message,
+            isNoActiveEvent = true
+        )
     }
 
     fun resetServerErrorSnackbarEvent() {
@@ -88,6 +110,28 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetItemDetectedSuccessEvent() {
         _itemDetectedSuccessEvent.value = null
+    }
+
+    fun checkAppVersion(context: Context? = null) {
+        val ctx = context ?: getApplication<Application>().applicationContext
+        if (!NetworkUtils.isNetworkConnected(ctx)) return
+
+        viewModelScope.launch {
+            try {
+                val packageInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+                val currentVersionName = packageInfo.versionName ?: "1.0.0"
+
+                val result = ApiClient.checkAppVersion(currentVersionName)
+                if (result.isSuccess && result.data != null) {
+                    val versionData = result.data
+                    if (versionData.updateAvailable && versionData.apkAvailable && versionData.downloadUrl.isNotEmpty()) {
+                        _appUpdateEvent.value = versionData
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("GameViewModel", "Error checking app version", e)
+            }
+        }
     }
 
     fun fetchCurrentEvent(context: Context? = null) {
@@ -176,6 +220,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         fetchCurrentEvent(ctx)
         fetchMiniLeaderboard(ctx)
+        checkAppVersion(ctx)
 
         if (!NetworkUtils.isNetworkConnected(ctx)) {
             Log.d("GameViewModel", "Network not connected, skipping account check")
@@ -235,11 +280,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d("GameViewModel", "Account state synced from player_status.php. Score: ${data.score}, Tasks: ${taskIds.size}")
                 } else {
                     Log.e("GameViewModel", "Failed to check account state: ${result.message}")
-                    triggerServerErrorSnackbar(result.message ?: "تعذر الاتصال بالسيرفر جلب بيانات الحساب")
+                    triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر لتحديث البيانات")
                 }
             } catch (e: Exception) {
                 Log.e("GameViewModel", "Error fetching account state from player_status.php", e)
-                triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر. يرجى المحاولة مرة أخرى لاحقاً.")
+                triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر")
             }
         }
     }
@@ -388,15 +433,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                             Log.e("GameViewModel", "Error deleting temp file on failure", e)
                         }
                     }
-                    val errorMsg = result.message ?: "فشلت عملية تسجيل المهمة بالسيرفر"
+                    val errorMsg = result.message ?: ""
                     Log.e("GameViewModel", "Server completeTask failed for ${taskToSync.id}: $errorMsg")
                     _inferenceError.value = errorMsg
-                    triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر لتسجيل المهمة: $errorMsg")
+
+                    if (result.statusCode == 409) {
+                        triggerNoActiveEventNotice("لا يمكن تسجيل المهام في الوقت الحالي لعدم وجود حدث نشط.")
+                    } else {
+                        triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر لتسجيل المهمة")
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("GameViewModel", "Exception during completeTask with server", e)
                 _inferenceError.value = e.localizedMessage ?: "خطأ في الاتصال بالسيرفر"
-                triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر. يرجى المحاولة مرة أخرى لاحقاً.")
+                triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر لتسجيل المهمة")
             } finally {
                 syncingTaskIds.remove(taskToSync.id)
             }
@@ -464,7 +514,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     Log.e("GameViewModel", "Server restart failed: ${result.message}")
                     _inferenceError.value = result.message ?: "فشلت إعادة البداية من السيرفر"
-                    triggerServerErrorSnackbar(result.message ?: "فشلت إعادة البداية بالسيرفر")
+                    triggerServerErrorSnackbar("تعذر الاتصال بالسيرفر لإعادة البداية")
                 }
             } catch (e: Exception) {
                 Log.e("GameViewModel", "Error calling restart endpoint", e)

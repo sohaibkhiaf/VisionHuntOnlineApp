@@ -164,7 +164,10 @@ class TasksFragment : Fragment() {
 
                                                 if (player.username.equals(currentUsername, ignoreCase = true)) {
                                                     tvUsername.setTypeface(null, Typeface.BOLD)
-                                                    tvUsername.setTextColor(Color.parseColor("#FEF08A"))
+                                                    tvUsername.setTextColor(Color.parseColor("#166534"))
+                                                } else {
+                                                    val isDarkTheme = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                                                    tvUsername.setTextColor(if (isDarkTheme) Color.parseColor("#F8FAFC") else Color.parseColor("#0F172A"))
                                                 }
 
                                                 b.layoutMiniLeaderboardRows.addView(rowView)
@@ -248,39 +251,48 @@ class TasksFragment : Fragment() {
                     TableLayout.LayoutParams.MATCH_PARENT,
                     TableLayout.LayoutParams.WRAP_CONTENT
                 )
-                setPadding(16, 12, 16, 12)
+                setPadding(16, 12, 16, 16)
                 gravity = Gravity.CENTER_VERTICAL
                 if (index % 2 == 1) {
                     setBackgroundColor(if (isDarkTheme) Color.parseColor("#15000000") else Color.parseColor("#06000000"))
                 }
             }
 
-            // Score on Right (Pill badge)
-            val scoreContainer = LinearLayout(requireContext()).apply {
-                layoutParams = TableRow.LayoutParams(90, TableRow.LayoutParams.WRAP_CONTENT)
+            // Rank on Right (RTL - index 0)
+            val rankContainer = LinearLayout(requireContext()).apply {
+                layoutParams = TableRow.LayoutParams(70, TableRow.LayoutParams.WRAP_CONTENT)
                 gravity = Gravity.CENTER
                 orientation = LinearLayout.HORIZONTAL
-                setPadding(8, 6, 8, 6)
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.RECTANGLE
-                    cornerRadius = 100f
-                    setColor(if (isDarkTheme) Color.parseColor("#064E3B") else Color.parseColor("#DCFCE7"))
+                setPadding(6, 6, 6, 6)
+                
+                val faceColor: Int
+                val shadowColor: Int
+                when (player.rankPosition) {
+                    1 -> { faceColor = if (isDarkTheme) Color.parseColor("#B45309") else Color.parseColor("#FDE047"); shadowColor = if (isDarkTheme) Color.parseColor("#78350F") else Color.parseColor("#CA8A04") }
+                    2 -> { faceColor = if (isDarkTheme) Color.parseColor("#64748B") else Color.parseColor("#E2E8F0"); shadowColor = if (isDarkTheme) Color.parseColor("#334155") else Color.parseColor("#94A3B8") }
+                    else -> { faceColor = if (isDarkTheme) Color.parseColor("#9A3412") else Color.parseColor("#FFEDD5"); shadowColor = if (isDarkTheme) Color.parseColor("#7C2D12") else Color.parseColor("#C2410C") }
                 }
+                background = create3DPill(requireContext(), faceColor, shadowColor)
             }
-            val tvScore = TextView(requireContext()).apply {
+            val tvRank = TextView(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
-                text = "${player.score}"
+                text = "${player.rankPosition}"
                 gravity = Gravity.CENTER
-                setTextColor(if (isDarkTheme) Color.parseColor("#34D399") else Color.parseColor("#15803D"))
-                textSize = 13f
+                val rankTextColor = when (player.rankPosition) {
+                    1 -> if (isDarkTheme) Color.parseColor("#FEF08A") else Color.parseColor("#854D0E")
+                    2 -> if (isDarkTheme) Color.parseColor("#F8FAFC") else Color.parseColor("#475569")
+                    else -> if (isDarkTheme) Color.parseColor("#FFEDD5") else Color.parseColor("#9A3412")
+                }
+                setTextColor(rankTextColor)
+                textSize = 14f
                 setTypeface(null, Typeface.BOLD)
             }
-            scoreContainer.addView(tvScore)
+            rankContainer.addView(tvRank)
 
-            // Username in Middle
+            // Username in Middle (index 1)
             val tvUsername = TextView(requireContext()).apply {
                 layoutParams = TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 1f)
                 text = player.username
@@ -296,51 +308,65 @@ class TasksFragment : Fragment() {
                     setTextColor(if (isDarkTheme) Color.parseColor("#F8FAFC") else Color.parseColor("#0F172A"))
                 }
             }
-
-            // Rank on Left (Medal badge)
-            val rankContainer = LinearLayout(requireContext()).apply {
-                layoutParams = TableRow.LayoutParams(70, TableRow.LayoutParams.WRAP_CONTENT)
+            
+            // Score on Left (index 2)
+            val scoreContainer = LinearLayout(requireContext()).apply {
+                layoutParams = TableRow.LayoutParams(100, TableRow.LayoutParams.WRAP_CONTENT)
                 gravity = Gravity.CENTER
                 orientation = LinearLayout.HORIZONTAL
-                setPadding(6, 6, 6, 6)
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.RECTANGLE
-                    cornerRadius = 100f
-                    val badgeColor = when (player.rankPosition) {
-                        1 -> if (isDarkTheme) Color.parseColor("#78350F") else Color.parseColor("#FEF08A") // Gold
-                        2 -> if (isDarkTheme) Color.parseColor("#334155") else Color.parseColor("#E2E8F0") // Silver
-                        else -> if (isDarkTheme) Color.parseColor("#7C2D12") else Color.parseColor("#FFEDD5") // Bronze
-                    }
-                    setColor(badgeColor)
-                }
+                setPadding(8, 8, 8, 8)
+                
+                val faceColor = if (isDarkTheme) Color.parseColor("#064E3B") else Color.parseColor("#DCFCE7")
+                val shadowColor = if (isDarkTheme) Color.parseColor("#022C22") else Color.parseColor("#86EFAC")
+                val strokeColor = if (isDarkTheme) Color.parseColor("#059669") else Color.parseColor("#4ADE80")
+                
+                background = create3DPill(requireContext(), faceColor, shadowColor, strokeColor)
             }
-            val tvRank = TextView(requireContext()).apply {
+            val tvScore = TextView(requireContext()).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
-                text = "${player.rankPosition}"
+                text = "${player.score} ⭐"
                 gravity = Gravity.CENTER
-                val rankTextColor = when (player.rankPosition) {
-                    1 -> if (isDarkTheme) Color.parseColor("#FDE047") else Color.parseColor("#854D0E")
-                    2 -> if (isDarkTheme) Color.parseColor("#CBD5E1") else Color.parseColor("#475569")
-                    else -> if (isDarkTheme) Color.parseColor("#FDBA74") else Color.parseColor("#9A3412")
-                }
-                setTextColor(rankTextColor)
+                setTextColor(if (isDarkTheme) Color.parseColor("#34D399") else Color.parseColor("#15803D"))
                 textSize = 13f
                 setTypeface(null, Typeface.BOLD)
             }
-            rankContainer.addView(tvRank)
+            scoreContainer.addView(tvScore)
 
-            row.addView(scoreContainer)
-            row.addView(tvUsername)
             row.addView(rankContainer)
+            row.addView(tvUsername)
+            row.addView(scoreContainer)
             tableLayout.addView(row)
         }
 
         b.layoutEndedTableContainer.addView(tableCard)
     }
 
+    private fun create3DPill(context: android.content.Context, faceColor: Int, shadowColor: Int, strokeColor: Int? = null): android.graphics.drawable.LayerDrawable {
+        val density = context.resources.displayMetrics.density
+        val offset = (4 * density).toInt()
+        val strokeW = (1.5f * density).toInt()
+
+        val shadow = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 100f * density
+            setColor(shadowColor)
+        }
+        val face = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 100f * density
+            setColor(faceColor)
+            if (strokeColor != null) {
+                setStroke(strokeW, strokeColor)
+            }
+        }
+        val layerDrawable = android.graphics.drawable.LayerDrawable(arrayOf(shadow, face))
+        layerDrawable.setLayerInset(0, 0, offset, 0, 0)
+        layerDrawable.setLayerInset(1, 0, 0, 0, offset)
+        return layerDrawable
+    }
     private fun showNormalTasksList(title: String) {
         val b = binding ?: return
         b.tvTasksSectionTitle.text = title

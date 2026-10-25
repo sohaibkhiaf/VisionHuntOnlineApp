@@ -53,30 +53,16 @@ class TasksAdapter : RecyclerView.Adapter<TasksAdapter.TaskViewHolder>() {
                 tvStatus.text = "مكتمل"
                 tvStatus.setTextColor(Color.parseColor("#15803D"))
 
-                if (isDarkTheme) {
-                    cardStatusBadge.setCardBackgroundColor(Color.parseColor("#064E3B"))
-                    cardTask.setCardBackgroundColor(Color.parseColor("#022C22"))
-                    cardTask.strokeColor = Color.parseColor("#059669")
-                } else {
-                    cardStatusBadge.setCardBackgroundColor(Color.parseColor("#DCFCE7"))
-                    cardTask.setCardBackgroundColor(Color.parseColor("#F0FDF4"))
-                    cardTask.strokeColor = Color.parseColor("#86EFAC")
-                }
+                cardStatusBadge.setCardBackgroundColor(if (isDarkTheme) Color.parseColor("#064E3B") else Color.parseColor("#DCFCE7"))
+                cardTask.setBackgroundResource(R.drawable.bg_3d_task_completed)
             } else {
                 ivStatusIcon.setImageResource(R.drawable.ic_unchecked)
                 ivStatusIcon.setColorFilter(Color.parseColor("#64748B"))
                 tvStatus.text = "لم يُكتشف"
                 tvStatus.setTextColor(Color.parseColor("#64748B"))
 
-                if (isDarkTheme) {
-                    cardStatusBadge.setCardBackgroundColor(Color.parseColor("#334155"))
-                    cardTask.setCardBackgroundColor(Color.parseColor("#1E293B"))
-                    cardTask.strokeColor = Color.parseColor("#334155")
-                } else {
-                    cardStatusBadge.setCardBackgroundColor(Color.parseColor("#F1F5F9"))
-                    cardTask.setCardBackgroundColor(Color.WHITE)
-                    cardTask.strokeColor = Color.parseColor("#E2E8F0")
-                }
+                cardStatusBadge.setCardBackgroundColor(if (isDarkTheme) Color.parseColor("#334155") else Color.parseColor("#F1F5F9"))
+                cardTask.setBackgroundResource(R.drawable.bg_3d_task_uncompleted)
             }
         }
     }

@@ -8,9 +8,39 @@
     <color name="text_secondary">#94A3B8</color>
     <color name="text_muted">#CBD5E1</color>
     <color name="card_stroke">#334155</color>
+    <color name="card_shadow">#020617</color>
+    <color name="main_score_shadow">#022C22</color>
 
     <!-- Task Item Specific Colors (Dark) -->
-    <color name="task_card_background">#1E293B</color>
     <color name="task_title_ar_color">#F8FAFC</color>
     <color name="task_text_color">#94A3B8</color>
+
+    <!-- 3D Card Colors -->
+    <color name="task_card_background">#1E293B</color>
+    <color name="task_uncompleted_bg">#1E293B</color>
+    <color name="task_uncompleted_stroke">#334155</color>
+    <color name="task_uncompleted_shadow">#020617</color>
+
+    <color name="task_completed_bg">#022C22</color>
+    <color name="task_completed_stroke">#059669</color>
+    <color name="task_completed_shadow">#011A14</color>
+
+    <!-- 3D Button Colors -->
+    <color name="btn_primary_bg">#166534</color>
+    <color name="btn_primary_shadow">#14532D</color>
+
+    <color name="btn_danger_bg">#DC2626</color>
+    <color name="btn_danger_shadow">#7F1D1D</color>
+
+    <color name="btn_outline_bg">#0F172A</color>
+    <color name="btn_outline_stroke">#334155</color>
+    <color name="btn_outline_shadow">#020617</color>
+
+    <color name="btn_danger_outline_bg">#0F172A</color>
+    <color name="btn_danger_outline_stroke">#991B1B</color>
+    <color name="btn_danger_outline_shadow">#450a0a</color>
+
+    <!-- Camera Preview Colors -->
+    <color name="camera_preview_bg">#0F172A</color>
+    <color name="camera_preview_shadow">#020617</color>
 </resources>

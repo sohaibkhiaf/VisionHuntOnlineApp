@@ -44,6 +44,7 @@ class NetworkDialogHelper(private val activity: Activity) {
 
         val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_no_internet, null)
         val btnRetry = dialogView.findViewById<View>(R.id.btn_retry_connection)
+        val btnClose = dialogView.findViewById<View>(R.id.btn_close_connection)
 
         val dialog = AlertDialog.Builder(activity)
             .setView(dialogView)
@@ -56,8 +57,12 @@ class NetworkDialogHelper(private val activity: Activity) {
             if (NetworkUtils.isNetworkConnected(activity)) {
                 dismissNoInternetDialog()
             } else {
-                Toast.makeText(activity, "ما زال الاتصال بالإنترنت غير متوفر!", Toast.LENGTH_SHORT).show()
+                GameToast.show(activity, "ما زال الاتصال بالإنترنت غير متوفر!", Toast.LENGTH_SHORT)
             }
+        }
+
+        btnClose?.setOnClickListener {
+            dismissNoInternetDialog()
         }
 
         noInternetDialog = dialog

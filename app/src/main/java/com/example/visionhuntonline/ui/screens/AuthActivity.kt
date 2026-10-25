@@ -36,9 +36,16 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun setupUI() {
-        binding.toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (isChecked) {
-                isRegisterMode = checkedId == R.id.btn_mode_register
+        binding.btnModeLogin.setOnClickListener {
+            if (isRegisterMode) {
+                isRegisterMode = false
+                updateFormMode()
+            }
+        }
+
+        binding.btnModeRegister.setOnClickListener {
+            if (!isRegisterMode) {
+                isRegisterMode = true
                 updateFormMode()
             }
         }
@@ -46,15 +53,29 @@ class AuthActivity : AppCompatActivity() {
         binding.btnSubmit.setOnClickListener {
             handleFormSubmit()
         }
+        
+        updateFormMode()
     }
 
     private fun updateFormMode() {
         binding.tvError.visibility = View.GONE
+        
+        val context = binding.root.context
+        val isDarkTheme = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val textPrimaryColor = if (isDarkTheme) android.graphics.Color.parseColor("#F8FAFC") else android.graphics.Color.parseColor("#0F172A")
+        val textSecondaryColor = if (isDarkTheme) android.graphics.Color.parseColor("#94A3B8") else android.graphics.Color.parseColor("#64748B")
+
         if (isRegisterMode) {
+            binding.btnModeRegister.setTextColor(textPrimaryColor)
+            binding.btnModeLogin.setTextColor(textSecondaryColor)
+            
             binding.tilPhone.visibility = View.VISIBLE
             binding.btnSubmit.text = "إنشاء حساب"
             binding.tvAuthSubtitle.text = "قم بإنشاء حساب جديد للانضمام إلى اللعبة"
         } else {
+            binding.btnModeLogin.setTextColor(textPrimaryColor)
+            binding.btnModeRegister.setTextColor(textSecondaryColor)
+            
             binding.tilPhone.visibility = View.GONE
             binding.btnSubmit.text = "تسجيل الدخول"
             binding.tvAuthSubtitle.text = "سجل دخولك أو أنشئ حساباً للبدء باللعب"
@@ -99,18 +120,18 @@ class AuthActivity : AppCompatActivity() {
                             username = username,
                             phone = phone
                         )
-                        Toast.makeText(
+                        com.example.visionhuntonline.util.GameToast.show(
                             this@AuthActivity,
                             result.message ?: "تم إنشاء الحساب بنجاح",
                             Toast.LENGTH_SHORT
-                        ).show()
+                        )
                         navigateToMain()
                     } else {
-                        Toast.makeText(
+                        com.example.visionhuntonline.util.GameToast.show(
                             this@AuthActivity,
                             "تم إنشاء الحساب بنجاح! جاري تسجيل الدخول...",
                             Toast.LENGTH_SHORT
-                        ).show()
+                        )
                         attemptLogin(username, password)
                     }
                 } else {
@@ -131,11 +152,11 @@ class AuthActivity : AppCompatActivity() {
                 username = username,
                 phone = result.data.phone
             )
-            Toast.makeText(
+            com.example.visionhuntonline.util.GameToast.show(
                 this@AuthActivity,
                 result.message ?: "تم تسجيل الدخول بنجاح",
                 Toast.LENGTH_SHORT
-            ).show()
+            )
             navigateToMain()
         } else {
             showError(result.message ?: "فشل تسجيل الدخول")
@@ -158,11 +179,13 @@ class AuthActivity : AppCompatActivity() {
         if (loading) {
             binding.progressIndicator.visibility = View.VISIBLE
             binding.btnSubmit.isEnabled = false
-            binding.toggleGroup.isEnabled = false
+            binding.btnModeLogin.isEnabled = false
+            binding.btnModeRegister.isEnabled = false
         } else {
             binding.progressIndicator.visibility = View.GONE
             binding.btnSubmit.isEnabled = true
-            binding.toggleGroup.isEnabled = true
+            binding.btnModeLogin.isEnabled = true
+            binding.btnModeRegister.isEnabled = true
         }
     }
 }

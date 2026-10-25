@@ -68,31 +68,29 @@
                     android:layout_height="match_parent" />
 
                 <!-- Camera Status Badge Container -->
-                <com.google.android.material.card.MaterialCardView
+                <FrameLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="top|start"
                     android:layout_margin="12dp"
-                    app:cardBackgroundColor="#CC0F172A"
-                    app:cardCornerRadius="100dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
+                    android:background="@drawable/bg_3d_badge">
 
                     <TextView
                         android:id="@+id/tv_badge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:paddingHorizontal="12dp"
-                        android:paddingVertical="6dp"
+                        android:paddingTop="6dp"
+                        android:paddingBottom="8dp"
                         android:text="الكشف نشط"
                         android:textColor="#86EFAC"
                         android:textSize="12sp"
                         android:textStyle="bold" />
 
-                </com.google.android.material.card.MaterialCardView>
+                </FrameLayout>
 
                 <!-- Success Floating Banner -->
-                <com.google.android.material.card.MaterialCardView
+                <FrameLayout
                     android:id="@+id/card_success_banner"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -100,11 +98,7 @@
                     android:layout_margin="16dp"
                     android:alpha="0"
                     android:visibility="gone"
-                    app:cardBackgroundColor="#CC064E3B"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
-                    app:strokeColor="#10B981"
-                    app:strokeWidth="1.5dp">
+                    android:background="@drawable/bg_3d_success_banner">
 
                     <LinearLayout
                         android:layout_width="wrap_content"
@@ -112,7 +106,8 @@
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
                         android:paddingHorizontal="16dp"
-                        android:paddingVertical="10dp">
+                        android:paddingTop="10dp"
+                        android:paddingBottom="14dp">
 
                         <TextView
                             android:id="@+id/tv_success_message"
@@ -124,7 +119,7 @@
 
                     </LinearLayout>
 
-                </com.google.android.material.card.MaterialCardView>
+                </FrameLayout>
 
             </FrameLayout>
 
@@ -137,20 +132,18 @@
             android:layout_marginTop="12dp"
             android:layout_weight="1">
 
-            <com.google.android.material.card.MaterialCardView
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/card_background"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_3d_card_16dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="16dp"
+                    android:paddingBottom="20dp">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -211,13 +204,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="3dp"
-                        android:text="تُحفظ الصور بجهازك فقط ولا تعالج بالسيرفر، ويحق للمنظمين معاينتها بعد التحدي للتحقق قبل تسليم الجوائز."
+                        android:text="تُحفظ الصور بجهازك فقط ولا تعالج بالسيرفر، ويحق للمنظمين معاينتها بعد التحدي للتحقق واستلام الجائزة."
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
                 </LinearLayout>
 
-            </com.google.android.material.card.MaterialCardView>
+            </FrameLayout>
 
         </androidx.core.widget.NestedScrollView>
 

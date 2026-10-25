@@ -34,20 +34,17 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
-        <!-- Score Summary Card -->
-        <com.google.android.material.card.MaterialCardView
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            app:cardBackgroundColor="#166534"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="0dp">
+            android:background="@drawable/bg_3d_main_score">
 
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp">
+                android:padding="16dp"
+                android:paddingBottom="22dp">
 
                 <!-- Top Left Circular Icon Buttons (Top End in RTL) -->
                 <LinearLayout
@@ -59,131 +56,124 @@
                     android:orientation="horizontal">
 
                     <!-- Start Camera Circular Button -->
-                    <com.google.android.material.card.MaterialCardView
+                    <FrameLayout
                         android:id="@+id/btn_start_camera_card"
                         android:layout_width="36dp"
                         android:layout_height="36dp"
+                        android:background="@drawable/bg_3d_btn_circle"
                         android:clickable="true"
-                        android:focusable="true"
-                        app:cardCornerRadius="18dp"
-                        app:cardElevation="0dp"
-                        app:strokeWidth="0dp">
+                        android:focusable="true">
 
                         <ImageView
                             android:id="@+id/btn_start_camera"
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
                             android:layout_gravity="center"
+                            android:layout_marginBottom="2dp"
                             android:contentDescription="ابدأ البحث بالكاميرا"
                             android:src="@drawable/ic_vision"
                             app:tint="#166534" />
 
-                    </com.google.android.material.card.MaterialCardView>
+                    </FrameLayout>
 
                     <Space
                         android:layout_width="8dp"
                         android:layout_height="wrap_content" />
 
                     <!-- Gallery / Captured Images Circular Button -->
-                    <com.google.android.material.card.MaterialCardView
+                    <FrameLayout
                         android:id="@+id/btn_gallery_card"
                         android:layout_width="36dp"
                         android:layout_height="36dp"
+                        android:background="@drawable/bg_3d_btn_circle"
                         android:clickable="true"
-                        android:focusable="true"
-                        app:cardCornerRadius="18dp"
-                        app:cardElevation="0dp"
-                        app:strokeWidth="0dp">
+                        android:focusable="true">
 
                         <ImageView
                             android:id="@+id/btn_gallery"
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
                             android:layout_gravity="center"
+                            android:layout_marginBottom="2dp"
                             android:contentDescription="الصور المكتشفة"
                             android:src="@drawable/ic_images"
                             app:tint="#2563EB" />
 
-                    </com.google.android.material.card.MaterialCardView>
+                    </FrameLayout>
 
                     <Space
                         android:layout_width="8dp"
                         android:layout_height="wrap_content" />
 
                     <!-- Reset Game Circular Button -->
-                    <com.google.android.material.card.MaterialCardView
+                    <FrameLayout
                         android:id="@+id/btn_reset_game_card"
                         android:layout_width="36dp"
                         android:layout_height="36dp"
+                        android:background="@drawable/bg_3d_btn_circle"
                         android:clickable="true"
-                        android:focusable="true"
-                        app:cardCornerRadius="18dp"
-                        app:cardElevation="0dp"
-                        app:strokeWidth="0dp">
+                        android:focusable="true">
 
                         <ImageView
                             android:id="@+id/btn_reset_game"
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
                             android:layout_gravity="center"
+                            android:layout_marginBottom="2dp"
                             android:contentDescription="إعادة بدء اللعبة"
                             android:src="@drawable/ic_restart"
                             app:tint="#B91C1C" />
 
-                    </com.google.android.material.card.MaterialCardView>
+                    </FrameLayout>
 
                     <Space
                         android:layout_width="8dp"
                         android:layout_height="wrap_content" />
 
                     <!-- Profile & Rules Circular Button -->
-                    <com.google.android.material.card.MaterialCardView
+                    <FrameLayout
                         android:id="@+id/btn_profile_info_card"
                         android:layout_width="36dp"
                         android:layout_height="36dp"
+                        android:background="@drawable/bg_3d_btn_circle"
                         android:clickable="true"
-                        android:focusable="true"
-                        app:cardCornerRadius="18dp"
-                        app:cardElevation="0dp"
-                        app:strokeWidth="0dp">
+                        android:focusable="true">
 
                         <ImageView
                             android:id="@+id/btn_profile_info"
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
                             android:layout_gravity="center"
+                            android:layout_marginBottom="2dp"
                             android:contentDescription="معلومات الحساب وقواعد اللعبة"
                             android:src="@drawable/ic_info"
                             app:tint="#D97706" />
 
-                    </com.google.android.material.card.MaterialCardView>
+                    </FrameLayout>
 
                 </LinearLayout>
 
                 <!-- Mini Leaderboard Box (Under Circular Buttons) -->
-                <com.google.android.material.card.MaterialCardView
+                <FrameLayout
                     android:id="@+id/card_mini_leaderboard"
                     android:layout_width="190dp"
                     android:layout_height="wrap_content"
                     android:layout_below="@id/layout_card_actions"
                     android:layout_alignParentEnd="true"
                     android:layout_marginTop="8dp"
-                    android:visibility="gone"
-                    app:cardBackgroundColor="#25000000"
-                    app:cardCornerRadius="10dp"
-                    app:cardElevation="0dp"
-                    app:strokeColor="#30FFFFFF"
-                    app:strokeWidth="1dp">
+                    android:visibility="gone">
 
                     <LinearLayout
                         android:id="@+id/layout_mini_leaderboard_rows"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:background="@drawable/bg_3d_card"
                         android:orientation="vertical"
                         android:paddingHorizontal="8dp"
-                        android:paddingVertical="5dp" />
+                        android:paddingBottom="5dp"
+                        android:paddingTop="5dp" />
 
-                </com.google.android.material.card.MaterialCardView>
+                </FrameLayout>
 
                 <!-- Score Label & Score -->
                 <TextView
@@ -261,7 +251,7 @@
 
             </RelativeLayout>
 
-        </com.google.android.material.card.MaterialCardView>
+        </FrameLayout>
 
         <TextView
             android:id="@+id/tv_tasks_section_title"

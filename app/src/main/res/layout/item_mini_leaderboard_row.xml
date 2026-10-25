@@ -14,7 +14,7 @@
         android:layout_width="22dp"
         android:layout_height="wrap_content"
         android:gravity="center_vertical|start"
-        android:textColor="#FEF08A"
+        android:textColor="#D97706"
         android:textSize="11sp"
         android:textStyle="bold" />
 
@@ -28,7 +28,7 @@
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/text_primary"
         android:textSize="11sp" />
 
     <!-- Score (on Right in LTR) -->
@@ -37,7 +37,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="end"
-        android:textColor="#DCFCE7"
+        android:textColor="#16A34A"
         android:textSize="11sp"
         android:textStyle="bold" />
 

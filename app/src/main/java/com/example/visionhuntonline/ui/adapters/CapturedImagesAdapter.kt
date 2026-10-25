@@ -38,9 +38,26 @@ class CapturedImagesAdapter : RecyclerView.Adapter<CapturedImagesAdapter.ViewHol
 
     class ViewHolder(private val binding: ItemCapturedImageBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: CapturedItem) {
+            val context = binding.root.context
+            val isDarkTheme = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+
             binding.tvTaskNameAr.text = item.taskNameAr
             binding.tvTaskNameEn.text = item.taskNameEn
-            binding.tvScore.text = "دقة المطابقة: ${(item.score * 100).toInt()}%"
+            
+            val scorePercent = if (item.score <= 1.0f) (item.score * 100).toInt() else item.score.toInt()
+            binding.tvScore.text = "مكتشف $scorePercent%"
+
+            if (isDarkTheme) {
+                binding.tvScore.setTextColor(android.graphics.Color.parseColor("#34D399"))
+                binding.ivStatusIcon.setColorFilter(android.graphics.Color.parseColor("#34D399"))
+                binding.cardScoreBadge.setBackgroundResource(com.example.visionhuntonline.R.drawable.bg_3d_task_completed)
+                binding.cardCapturedImage.setBackgroundResource(com.example.visionhuntonline.R.drawable.bg_3d_task_uncompleted)
+            } else {
+                binding.tvScore.setTextColor(android.graphics.Color.parseColor("#15803D"))
+                binding.ivStatusIcon.setColorFilter(android.graphics.Color.parseColor("#15803D"))
+                binding.cardScoreBadge.setBackgroundResource(com.example.visionhuntonline.R.drawable.bg_3d_task_completed)
+                binding.cardCapturedImage.setBackgroundResource(com.example.visionhuntonline.R.drawable.bg_3d_task_uncompleted)
+            }
 
             val dateStr = SimpleDateFormat("yyyy/MM/dd - HH:mm", Locale.getDefault()).format(Date(item.timestamp))
             binding.tvTimestamp.text = dateStr

@@ -83,6 +83,15 @@ data class HealthData(
     val serverTime: String?
 )
 
+data class AppVersionData(
+    val version: String,
+    val currentVersion: String,
+    val updateAvailable: Boolean,
+    val apkAvailable: Boolean,
+    val apkSize: Long,
+    val downloadUrl: String
+)
+
 data class LeaderboardPlayer(
     val rank: Int,
     val username: String,
@@ -215,7 +224,7 @@ object ApiClient {
                     ApiResult(true, msg, msg, responseCode)
                 } else {
                     val errorMsg = when (responseCode) {
-                        403 -> "كلمة المرور القديمة غير صحيحة"
+                        403 -> "كلمة المرور غير صحيحة"
                         401 -> "انتهت صلاحية الجلسة، يرجى إعادة تسجيل الدخول"
                         else -> json.optString("message").ifEmpty { "فشل تحديث البيانات ($responseCode)" }
                     }
@@ -521,6 +530,36 @@ object ApiClient {
                 }
             } catch (e: Exception) {
                 ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء جلب الترتيب", 500)
+            }
+        }
+    }
+
+    suspend fun checkAppVersion(currentVersionName: String): ApiResult<AppVersionData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val (responseCode, responseText) = executeGet("app_version.php?current_version=$currentVersionName", null)
+                val json = parseJsonResponse(responseText, responseCode)
+
+                val isSuccess = json.optBoolean("success")
+                val dataObj = json.optJSONObject("data")
+
+                if (isSuccess && dataObj != null) {
+                    val versionData = AppVersionData(
+                        version = dataObj.optString("version"),
+                        currentVersion = dataObj.optString("current_version"),
+                        updateAvailable = dataObj.optBoolean("update_available"),
+                        apkAvailable = dataObj.optBoolean("apk_available"),
+                        apkSize = dataObj.optLong("apk_size"),
+                        downloadUrl = dataObj.optString("download_url")
+                    )
+                    val msg = json.optString("message", "فحص التحديثات")
+                    ApiResult(true, versionData, msg, responseCode)
+                } else {
+                    val msg = json.optString("message", "لا تتوفر تحديثات حالياً.")
+                    ApiResult(true, null, msg, responseCode)
+                }
+            } catch (e: Exception) {
+                ApiResult(false, null, e.localizedMessage ?: "خطأ أثناء فحص التحديثات", 500)
             }
         }
     }

@@ -43,7 +43,7 @@ class CameraFragment : Fragment() {
             startCamera()
         } else {
             context?.let {
-                Toast.makeText(it, "نحتاج إلى إذن الكاميرا لتشغيل الكشف", Toast.LENGTH_SHORT).show()
+                com.example.visionhuntonline.util.GameToast.show(it, "نحتاج إلى إذن الكاميرا لتشغيل الكشف", Toast.LENGTH_SHORT)
             }
         }
     }

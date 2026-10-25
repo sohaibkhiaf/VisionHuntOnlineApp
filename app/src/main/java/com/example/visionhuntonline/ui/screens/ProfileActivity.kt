@@ -65,7 +65,7 @@ class ProfileActivity : AppCompatActivity() {
 
         val token = sessionManager.getToken()
         if (token.isNullOrEmpty()) {
-            Toast.makeText(this, "جلسة المستخدم انتهت، يرجى إعادة تسجيل الدخول", Toast.LENGTH_SHORT).show()
+            com.example.visionhuntonline.util.GameToast.show(this, "جلسة المستخدم انتهت، يرجى إعادة تسجيل الدخول", Toast.LENGTH_SHORT)
             navigateToAuth()
             return
         }
@@ -75,7 +75,7 @@ class ProfileActivity : AppCompatActivity() {
         val newPassword = binding.etNewPassword.text?.toString()?.trim() ?: ""
 
         if (oldPassword.isEmpty()) {
-            Toast.makeText(this, "يرجى إدخال كلمة المرور الحالية لتأكيد التحديث", Toast.LENGTH_SHORT).show()
+            com.example.visionhuntonline.util.GameToast.show(this, "يرجى إدخال كلمة المرور الحالية لتأكيد التحديث", Toast.LENGTH_SHORT)
             binding.etOldPassword.requestFocus()
             return
         }
@@ -97,9 +97,9 @@ class ProfileActivity : AppCompatActivity() {
                 }
                 binding.etOldPassword.setText("")
                 binding.etNewPassword.setText("")
-                Toast.makeText(this@ProfileActivity, result.message ?: "تم تحديث البيانات بنجاح", Toast.LENGTH_LONG).show()
+                com.example.visionhuntonline.util.GameToast.show(this@ProfileActivity, result.message ?: "تم تحديث البيانات بنجاح", Toast.LENGTH_LONG)
             } else {
-                Toast.makeText(this@ProfileActivity, result.message ?: "فشل تحديث البيانات", Toast.LENGTH_LONG).show()
+                com.example.visionhuntonline.util.GameToast.show(this@ProfileActivity, result.message ?: "فشل تحديث البيانات", Toast.LENGTH_LONG)
             }
         }
     }
@@ -122,10 +122,10 @@ class ProfileActivity : AppCompatActivity() {
 
             if (result.isSuccess) {
                 sessionManager.clearSession()
-                Toast.makeText(this@ProfileActivity, result.message ?: "تم تسجيل الخروج بنجاح", Toast.LENGTH_SHORT).show()
+                com.example.visionhuntonline.util.GameToast.show(this@ProfileActivity, result.message ?: "تم تسجيل الخروج بنجاح", Toast.LENGTH_SHORT)
                 navigateToAuth()
             } else {
-                Toast.makeText(this@ProfileActivity, result.message ?: "فشل الاتصال بالسيرفر لتسجيل الخروج", Toast.LENGTH_LONG).show()
+                com.example.visionhuntonline.util.GameToast.show(this@ProfileActivity, result.message ?: "فشل الاتصال بالسيرفر لتسجيل الخروج", Toast.LENGTH_LONG)
             }
         }
     }

@@ -43,21 +43,18 @@
                 android:textStyle="bold" />
 
             <!-- Card 1: Account Info & Update Form -->
-            <com.google.android.material.card.MaterialCardView
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="@color/task_card_background"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/card_stroke"
-                app:strokeWidth="1dp">
+                android:background="@drawable/bg_3d_card_16dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="16dp"
+                    android:paddingBottom="20dp">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -153,15 +150,16 @@
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <!-- Update Button -->
-                    <com.google.android.material.button.MaterialButton
+                    <androidx.appcompat.widget.AppCompatButton
                         android:id="@+id/btn_update_profile"
                         android:layout_width="match_parent"
                         android:layout_height="50dp"
-                        android:layout_marginTop="16dp"
-                        android:backgroundTint="#166534"
+                        android:layout_marginTop="20dp"
+                        android:background="@drawable/bg_3d_btn_primary"
                         android:text="تحديث المعلومات"
+                        android:textColor="#FFFFFF"
                         android:textSize="15sp"
-                        app:cornerRadius="16dp" />
+                        android:textStyle="bold" />
 
                     <com.google.android.material.progressindicator.CircularProgressIndicator
                         android:id="@+id/progress_profile"
@@ -175,20 +173,19 @@
 
                 </LinearLayout>
 
-            </com.google.android.material.card.MaterialCardView>
+            </FrameLayout>
 
             <!-- Card 2: Logout -->
-            <com.google.android.material.button.MaterialButton
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btn_logout"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:layout_marginBottom="24dp"
-                android:strokeColor="#DC2626"
+                android:background="@drawable/bg_3d_btn_danger_outline"
                 android:text="تسجيل الخروج"
                 android:textColor="#DC2626"
                 android:textSize="15sp"
-                app:cornerRadius="16dp" />
+                android:textStyle="bold" />
 
         </LinearLayout>
 
