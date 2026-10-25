@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.visionhuntonline.R
 import com.example.visionhuntonline.databinding.ItemTaskBinding
+import com.example.visionhuntonline.model.Rarity
 import com.example.visionhuntonline.model.TaskDefinition
 
 class TasksAdapter : RecyclerView.Adapter<TasksAdapter.TaskViewHolder>() {
@@ -37,7 +38,13 @@ class TasksAdapter : RecyclerView.Adapter<TasksAdapter.TaskViewHolder>() {
         with(holder.binding) {
             tvTitleAr.text = task.displayNameAr
             tvTitleEn.text = task.displayNameEn
-            tvRarity.text = "الندرة: ${task.rarity.displayNameAr}"
+            tvRarity.text = "⚡ ${task.rarity.displayNameAr}"
+            val rarityColor = when (task.rarity) {
+                Rarity.COMMON -> if (isDarkTheme) Color.parseColor("#CBD5E1") else Color.parseColor("#475569")
+                Rarity.UNCOMMON -> if (isDarkTheme) Color.parseColor("#60A5FA") else Color.parseColor("#2563EB")
+                Rarity.RARE -> if (isDarkTheme) Color.parseColor("#FBBF24") else Color.parseColor("#D97706")
+            }
+            tvRarity.setTextColor(rarityColor)
             tvPoints.text = "+${task.points}"
 
             if (isCompleted) {

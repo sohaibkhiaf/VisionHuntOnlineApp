@@ -81,14 +81,6 @@ class CameraFragment : Fragment() {
                     viewModel.rawDetections.collect { detections ->
                         binding?.let { b ->
                             b.detectionOverlay.updateDetections(detections)
-                            b.tvDetectedCount.text = "الأجسام المكتشفة للكاميرا: ${detections.size}"
-                        }
-                    }
-                }
-                launch {
-                    viewModel.gameDetections.collect { gameDetections ->
-                        binding?.let { b ->
-                            b.tvMatchedCount.text = "الأجسام المطابقة للشرط (85%+): ${gameDetections.size}"
                         }
                     }
                 }
@@ -149,7 +141,7 @@ class CameraFragment : Fragment() {
             detectorListener = object : ObjectDetectorHelper.DetectorListener {
                 override fun onError(error: String) {
                     activity?.runOnUiThread {
-                        binding?.tvModelStatus?.text = "خطأ النموذج: $error"
+                        Log.e("CameraFragment", "Model error: $error")
                     }
                 }
 

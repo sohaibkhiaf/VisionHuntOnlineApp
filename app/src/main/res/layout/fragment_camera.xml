@@ -130,7 +130,7 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Info Card -->
+        <!-- Rules & Fair Play Card -->
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -156,39 +156,63 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="start"
-                        android:text="حالة نظام الكشف"
+                        android:text="قواعد وإرشادات اللعبة"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
+                    <!-- Rule 1: How to Play (Single sentence) -->
                     <TextView
-                        android:id="@+id/tv_model_status"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="start"
-                        android:layout_marginTop="4dp"
-                        android:text="تم تحميل EfficientDet-Lite3 بنجاح."
-                        android:textColor="@color/text_muted"
-                        android:textSize="13sp" />
+                        android:layout_marginTop="10dp"
+                        android:text="🎯 طريقة اللعب:"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
 
                     <TextView
-                        android:id="@+id/tv_detected_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="start"
-                        android:layout_marginTop="4dp"
-                        android:text="الأجسام المكتشفة للكاميرا: 0"
-                        android:textColor="@color/text_muted"
+                        android:layout_marginTop="3dp"
+                        android:text="وجّه الكاميرا نحو الأجسام المطلوبة من حولك بنسبة مطابقة تتجاوز 85% لاكتشافها واحتساب النقاط تلقائياً."
+                        android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
+                    <!-- Rule 2: Fair Play Terms (Single sentence) -->
                     <TextView
-                        android:id="@+id/tv_matched_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="start"
-                        android:layout_marginTop="4dp"
-                        android:text="الأجسام المطابقة للشرط (85%+): 0"
-                        android:textColor="@color/text_muted"
+                        android:layout_marginTop="12dp"
+                        android:text="🚫 شروط اللعب النظيف:"
+                        android:textColor="#B91C1C"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="يُمنع تصوير الشاشات الإلكترونية أو الصور المطبوعة ويجب تصوير الأجسام الحقيقية في واقع البيئة المحيطة بك فقط."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
+                    <!-- Rule 3: Privacy & Prize Verification -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="📸 الخصوصية والجوائز:"
+                        android:textColor="#15803D"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="تُحفظ الصور بجهازك فقط ولا تعالج بالسيرفر، ويحق للمنظمين معاينتها بعد التحدي للتحقق قبل تسليم الجوائز."
+                        android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
                 </LinearLayout>
