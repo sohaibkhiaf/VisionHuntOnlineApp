@@ -14,25 +14,24 @@
         android:padding="16dp"
         android:textDirection="rtl">
 
-        <!-- Header -->
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- 3D Navigation Bar -->
+        <FrameLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="start"
-            android:text="VISION HUNT"
-            android:textColor="#16A34A"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+            android:background="@drawable/bg_3d_card_16dp"
+            android:layout_marginBottom="4dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="start"
-            android:layout_marginTop="2dp"
-            android:text="اكتشف الأشياء"
-            android:textColor="@color/text_primary"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="16dp"
+                android:text="اكتشف الأشياء 📷"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </FrameLayout>
 
         <TextView
             android:layout_width="wrap_content"
@@ -87,6 +86,28 @@
                         android:textSize="12sp"
                         android:textStyle="bold" />
 
+                </FrameLayout>
+
+                <!-- Flashlight 3D Button -->
+                <FrameLayout
+                    android:id="@+id/btn_flashlight_card"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="12dp"
+                    android:background="@drawable/bg_3d_btn_circle"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:id="@+id/iv_flashlight"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:layout_marginBottom="2dp"
+                        android:contentDescription="تشغيل الفلاش"
+                        android:src="@drawable/ic_flashlight"
+                        app:tint="#166534" />
                 </FrameLayout>
 
                 <!-- Success Floating Banner -->
@@ -204,7 +225,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="3dp"
-                        android:text="تُحفظ الصور بجهازك فقط ولا تعالج بالسيرفر، ويحق للمنظمين معاينتها بعد التحدي للتحقق واستلام الجائزة."
+                        android:text="تُحفظ الصور بجهازك فقط ولا تعالج بالسيرفر، ويحق للمنظمين معاينتها بعد التحدي للتحقق قبل تسليم الجوائز."
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 

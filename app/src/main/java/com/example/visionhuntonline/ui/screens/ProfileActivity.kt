@@ -40,6 +40,10 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        binding.btnBack.setOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
+        }
+        
         binding.btnUpdateProfile.setOnClickListener {
             handleProfileUpdate()
         }

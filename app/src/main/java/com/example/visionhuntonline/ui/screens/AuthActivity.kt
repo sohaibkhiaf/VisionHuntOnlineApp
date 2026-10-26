@@ -30,6 +30,13 @@ class AuthActivity : AppCompatActivity() {
         binding = ActivityAuthBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Fix Status Bar overlap
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, systemBars.top, 0, systemBars.bottom)
+            insets
+        }
+
         sessionManager = UserSessionManager(this)
 
         setupUI()
@@ -71,14 +78,12 @@ class AuthActivity : AppCompatActivity() {
             
             binding.tilPhone.visibility = View.VISIBLE
             binding.btnSubmit.text = "إنشاء حساب"
-            binding.tvAuthSubtitle.text = "قم بإنشاء حساب جديد للانضمام إلى اللعبة"
         } else {
             binding.btnModeLogin.setTextColor(textPrimaryColor)
             binding.btnModeRegister.setTextColor(textSecondaryColor)
             
             binding.tilPhone.visibility = View.GONE
             binding.btnSubmit.text = "تسجيل الدخول"
-            binding.tvAuthSubtitle.text = "سجل دخولك أو أنشئ حساباً للبدء باللعب"
         }
     }
 

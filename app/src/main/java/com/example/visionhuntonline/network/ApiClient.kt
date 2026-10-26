@@ -572,6 +572,7 @@ object ApiClient {
         conn.requestMethod = "POST"
         conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
         conn.setRequestProperty("Accept", "application/json")
+        conn.setRequestProperty("User-Agent", "VisionHuntApp/1.0.1 (Android; Mobile)")
         conn.connectTimeout = 10000
         conn.readTimeout = 10000
 
@@ -602,6 +603,7 @@ object ApiClient {
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "GET"
         conn.setRequestProperty("Accept", "application/json")
+        conn.setRequestProperty("User-Agent", "VisionHuntApp/1.0.1 (Android; Mobile)")
         conn.connectTimeout = 10000
         conn.readTimeout = 10000
 

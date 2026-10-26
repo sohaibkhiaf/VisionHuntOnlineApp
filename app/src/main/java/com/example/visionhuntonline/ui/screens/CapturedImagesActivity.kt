@@ -37,7 +37,9 @@ class CapturedImagesActivity : AppCompatActivity() {
 
         dbHelper = CapturedItemDbHelper(this)
 
-        binding.toolbarTitle.text = "الصور المكتشفة"
+        binding.btnBack.setOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
+        }
 
         binding.rvCaptured.layoutManager = LinearLayoutManager(this)
         binding.rvCaptured.adapter = adapter

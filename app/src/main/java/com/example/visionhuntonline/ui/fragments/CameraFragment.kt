@@ -35,6 +35,8 @@ class CameraFragment : Fragment() {
     private val viewModel: GameViewModel by activityViewModels()
     private var cameraExecutor: ExecutorService? = null
     private var detectorHelper: ObjectDetectorHelper? = null
+    private var cameraControl: androidx.camera.core.CameraControl? = null
+    private var isFlashlightOn = false
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -68,6 +70,14 @@ class CameraFragment : Fragment() {
             startCamera()
         } else {
             permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+
+        binding?.btnFlashlightCard?.setOnClickListener {
+            isFlashlightOn = !isFlashlightOn
+            cameraControl?.enableTorch(isFlashlightOn)
+            
+            val tintColor = if (isFlashlightOn) android.graphics.Color.parseColor("#F59E0B") else android.graphics.Color.parseColor("#166534")
+            binding?.ivFlashlight?.setColorFilter(tintColor)
         }
 
         binding?.swipeRefreshCamera?.setOnRefreshListener {
@@ -186,12 +196,15 @@ class CameraFragment : Fragment() {
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
+                val camera = cameraProvider.bindToLifecycle(
                     viewLifecycleOwner,
                     cameraSelector,
                     preview,
                     imageAnalysis
                 )
+                
+                cameraControl = camera.cameraControl
+                
             } catch (e: Exception) {
                 Log.e("CameraFragment", "Camera binding failed", e)
             }
