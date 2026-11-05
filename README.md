@@ -11,9 +11,7 @@ An interactive Android game leveraging On-Device Computer Vision & Artificial In
    * **Common**: 10 Points
    * **Uncommon**: 20 Points
    * **Rare**: 30 Points
-3. **AI Vision Models**:
-   * **Live Continuous Scan (EfficientDet-Lite3)**: Real-time live camera analysis with an 85%+ confidence threshold for automatic task completion.
-   * **On-Demand Capture Scan (YOLO World ONNX)**: Freeze-frame image analysis with bounding box displays for detections above 30%+, requiring a 75%+ confidence score to complete tasks.
+3. **AI Vision Detection**: Real-time live camera analysis (EfficientDet-Lite3) with an 85%+ confidence threshold for automatic task completion and verification.
 4. **Events & Leaderboards**: Live seasonal quests and competitive leaderboards with real-time score synchronization.
 
 ---
@@ -21,9 +19,7 @@ An interactive Android game leveraging On-Device Computer Vision & Artificial In
 ## 🛠️ Tech Stack
 
 * **Language & Platform**: Native Android (Kotlin), Material Design 3.
-* **On-Device Artificial Intelligence**:
-  * TensorFlow Lite (`efficientdet_lite3.tflite`)
-  * ONNX Runtime Android (`yolo_world_int8.onnx`)
+* **On-Device Artificial Intelligence**: TensorFlow Lite (`efficientdet_lite3.tflite`).
 * **Camera & Visualization**: AndroidX CameraX API, Custom Canvas Bounding-Box Overlay.
 * **Architecture & State**: MVVM Architecture, Kotlin Coroutines & StateFlow, View Binding.
 * **Storage & Networking**: SQLite Local Database, Native HttpURLConnection REST API with PHP Backend.
