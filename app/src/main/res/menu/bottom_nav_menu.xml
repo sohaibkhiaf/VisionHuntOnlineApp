@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_tasks"
+        android:icon="@drawable/ic_checklist"
+        android:title="المهام والنقاط" />
+    <item
+        android:id="@+id/nav_camera"
+        android:icon="@drawable/ic_vision"
+        android:title="اكتشف الأشياء" />
+</menu>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Theme Semantic Colors (Light) -->
+    <color name="screen_background">#F8FAFC</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="bottom_nav_background">#FFFFFF</color>
+    <color name="text_primary">#0F172A</color>
+    <color name="text_secondary">#64748B</color>
+    <color name="text_muted">#475569</color>
+    <color name="card_stroke">#E2E8F0</color>
+    <color name="card_shadow">#CBD5E1</color>
+    <color name="main_score_shadow">#14532D</color>
+
+    <!-- Task Item Specific Colors -->
+    <color name="task_title_ar_color">#0F172A</color>
+    <color name="task_text_color">#64748B</color>
+
+    <!-- 3D Card Colors -->
+    <color name="task_card_background">#FFFFFF</color>
+    <color name="task_uncompleted_bg">#FFFFFF</color>
+    <color name="task_uncompleted_stroke">#E2E8F0</color>
+    <color name="task_uncompleted_shadow">#CBD5E1</color>
+
+    <color name="task_completed_bg">#F0FDF4</color>
+    <color name="task_completed_stroke">#86EFAC</color>
+    <color name="task_completed_shadow">#86EFAC</color>
+
+    <!-- 3D Button Colors -->
+    <color name="btn_primary_bg">#166534</color>
+    <color name="btn_primary_shadow">#14532D</color>
+
+    <color name="btn_danger_bg">#DC2626</color>
+    <color name="btn_danger_shadow">#7F1D1D</color>
+
+    <color name="btn_outline_bg">#F8FAFC</color>
+    <color name="btn_outline_stroke">#E2E8F0</color>
+    <color name="btn_outline_shadow">#CBD5E1</color>
+
+    <color name="btn_danger_outline_bg">#F8FAFC</color>
+    <color name="btn_danger_outline_stroke">#FCA5A5</color>
+    <color name="btn_danger_outline_shadow">#FEE2E2</color>
+
+    <!-- Camera Preview Colors -->
+    <color name="camera_preview_bg">#0F172A</color>
+    <color name="camera_preview_shadow">#020617</color>
+</resources>
